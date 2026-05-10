@@ -274,6 +274,7 @@ function renderEvidenceTopics(evidence) {
         ${evidence.slice(0, 6).map((topic) => `
           <article class="evidence-card">
             <strong>${escapeHtml(topic.title)}</strong>
+            ${topic.source?.citation ? `<small>${escapeHtml(topic.source.citation)}</small>` : ""}
             <p>${escapeHtml(topic.summary)}</p>
             <ul>
               ${(topic.checks ?? []).slice(0, 2).map((check) => `<li>${escapeHtml(check)}</li>`).join("")}

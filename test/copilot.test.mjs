@@ -106,3 +106,11 @@ test("knowledge registry is editable but structurally validated", () => {
   assert.ok(topics.some((topic) => topic.id === "missing_data"));
   assert.ok(topics.some((topic) => topic.relatedAnalyses?.includes("measurement_invariance")));
 });
+
+test("2014 Standards cards are retrievable with source metadata", () => {
+  const hits = retrieveKnowledge("Standards 2014 fairness DIF accommodation group comparison");
+
+  assert.equal(hits[0].id, "standards_2014_fairness");
+  assert.match(hits[0].source.citation, /AERA, APA, & NCME/);
+  assert.ok(hits[0].checks.some((check) => check.includes("invariance") || check.includes("DIF")));
+});

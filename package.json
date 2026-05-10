@@ -6,7 +6,7 @@
   "description": "Static psychometric consultation and demo scoring app for GitHub Pages.",
   "scripts": {
     "build": "node bin/build-static.mjs",
-    "test": "node --test && node --check web/app.js && node --check src/copilot.js && node --check src/score.js && node --check knowledge/topics.js",
+    "test": "node --test && node --check web/app.js && node --check src/copilot.js && node --check src/score.js && node --check knowledge/topics.js && node --check knowledge/standards-2014.js",
     "web": "node bin/serve-web.mjs",
     "consult": "node bin/copilot.mjs"
   },

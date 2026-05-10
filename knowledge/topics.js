@@ -1,4 +1,6 @@
-export const KNOWLEDGE_TOPICS = [
+import { STANDARDS_2014_TOPICS } from "./standards-2014.js";
+
+const CORE_TOPICS = [
   {
     id: "data_screening",
     title: "Data screening comes before model interpretation",
@@ -335,4 +337,9 @@ export const KNOWLEDGE_TOPICS = [
       "The app displays respondent-level feedback."
     ]
   }
+];
+
+export const KNOWLEDGE_TOPICS = [
+  ...CORE_TOPICS,
+  ...STANDARDS_2014_TOPICS
 ];

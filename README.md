@@ -50,6 +50,7 @@ https://cloudvelvet.github.io/psychometrician-copilot/
 
 ```text
 knowledge/topics.js
+knowledge/standards-2014.js
 ```
 
 새 지식 카드는 아래 필드를 갖습니다.
@@ -74,6 +75,8 @@ npm run build
 ```
 
 GitHub Pages에 반영하려면 변경사항을 `main` 브랜치에 push하면 됩니다.
+
+현재 `standards_2014edition.pdf`는 원문을 복제하지 않고, AERA/APA/NCME 2014 Standards의 장별 핵심을 짧은 지식 카드로 재작성해 넣었습니다. 앱 화면에서는 해당 카드에 출처가 함께 표시됩니다.
 
 ## Screens
 

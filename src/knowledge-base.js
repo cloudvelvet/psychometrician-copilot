@@ -94,6 +94,9 @@ function retrievalTermsFor(topic) {
 
 function cloneTopic(topic) {
   const clone = { ...topic };
+  if (topic.source && typeof topic.source === "object") {
+    clone.source = { ...topic.source };
+  }
   for (const field of ["keywords", "checks", "relatedAnalyses", "useWhen"]) {
     if (Array.isArray(topic[field])) {
       clone[field] = [...topic[field]];
