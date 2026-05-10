@@ -1,0 +1,41 @@
+{
+  "id": "job_fit_demo_v1",
+  "name": "Job Fit Demo",
+  "version": "0.1.0",
+  "language": "ko",
+  "measurementStatus": "demo_not_validated",
+  "notice": "Demo item bank for coaching and reflection prototypes only. Do not use for automated hiring decisions without validation, bias review, consent, and legal review.",
+  "responseScale": {
+    "min": 1,
+    "max": 5,
+    "labels": {
+      "1": "전혀 아니다",
+      "2": "아니다",
+      "3": "보통이다",
+      "4": "그렇다",
+      "5": "매우 그렇다"
+    }
+  },
+  "items": [
+    { "id": "jf_values_1", "text": "이 직무의 목적이나 가치가 나의 기준과 잘 맞는다.", "factor": "values_fit", "reverse": false },
+    { "id": "jf_values_2", "text": "이 직무에서 중요하게 여기는 방식은 나와 잘 맞지 않는다.", "factor": "values_fit", "reverse": true },
+    { "id": "jf_skill_1", "text": "내 현재 역량은 이 직무의 핵심 요구와 잘 맞는다.", "factor": "skill_fit", "reverse": false },
+    { "id": "jf_skill_2", "text": "이 직무는 내가 가진 강점을 쓰기 어렵게 만든다.", "factor": "skill_fit", "reverse": true },
+    { "id": "jf_env_1", "text": "이 직무의 일하는 환경은 내가 선호하는 방식과 가깝다.", "factor": "environment_fit", "reverse": false },
+    { "id": "jf_env_2", "text": "이 직무의 업무 환경은 나에게 지속적으로 부담이 될 것 같다.", "factor": "environment_fit", "reverse": true },
+    { "id": "jf_growth_1", "text": "이 직무는 내가 성장하고 싶은 방향과 연결되어 있다.", "factor": "growth_fit", "reverse": false },
+    { "id": "jf_growth_2", "text": "이 직무는 장기적으로 배울 점이 적을 것 같다.", "factor": "growth_fit", "reverse": true }
+  ],
+  "subscales": {
+    "values_fit": { "label": "가치 적합", "method": "mean", "items": ["jf_values_1", "jf_values_2"] },
+    "skill_fit": { "label": "역량 적합", "method": "mean", "items": ["jf_skill_1", "jf_skill_2"] },
+    "environment_fit": { "label": "환경 적합", "method": "mean", "items": ["jf_env_1", "jf_env_2"] },
+    "growth_fit": { "label": "성장 적합", "method": "mean", "items": ["jf_growth_1", "jf_growth_2"] }
+  },
+  "consistencyPairs": [
+    { "id": "job_values_pair", "leftItemId": "jf_values_1", "rightItemId": "jf_values_2", "maxDifference": 2 },
+    { "id": "job_skill_pair", "leftItemId": "jf_skill_1", "rightItemId": "jf_skill_2", "maxDifference": 2 },
+    { "id": "job_environment_pair", "leftItemId": "jf_env_1", "rightItemId": "jf_env_2", "maxDifference": 2 },
+    { "id": "job_growth_pair", "leftItemId": "jf_growth_1", "rightItemId": "jf_growth_2", "maxDifference": 2 }
+  ]
+}

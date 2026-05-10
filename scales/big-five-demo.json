@@ -1,0 +1,52 @@
+{
+  "id": "big_five_demo_v1",
+  "name": "Big Five Demo Short Form",
+  "version": "0.1.0",
+  "language": "ko",
+  "measurementStatus": "demo_not_validated",
+  "notice": "Demo item bank for product prototyping only. Replace with a licensed or validated instrument before real assessment use.",
+  "responseScale": {
+    "min": 1,
+    "max": 5,
+    "labels": {
+      "1": "전혀 아니다",
+      "2": "아니다",
+      "3": "보통이다",
+      "4": "그렇다",
+      "5": "매우 그렇다"
+    }
+  },
+  "items": [
+    { "id": "bf_o_1", "text": "나는 새로운 아이디어나 경험을 탐색하는 것을 즐긴다.", "factor": "openness", "reverse": false },
+    { "id": "bf_o_2", "text": "나는 익숙한 방식만 고수하는 편이다.", "factor": "openness", "reverse": true },
+    { "id": "bf_c_1", "text": "나는 해야 할 일을 체계적으로 마무리하는 편이다.", "factor": "conscientiousness", "reverse": false },
+    { "id": "bf_c_2", "text": "나는 계획을 세워도 쉽게 미루는 편이다.", "factor": "conscientiousness", "reverse": true },
+    { "id": "bf_e_1", "text": "나는 사람들과 어울릴 때 에너지를 얻는 편이다.", "factor": "extraversion", "reverse": false },
+    { "id": "bf_e_2", "text": "나는 모임에서 먼저 말을 꺼내는 일이 드문 편이다.", "factor": "extraversion", "reverse": true },
+    { "id": "bf_a_1", "text": "나는 다른 사람의 입장을 고려하려고 노력한다.", "factor": "agreeableness", "reverse": false },
+    { "id": "bf_a_2", "text": "나는 의견이 다르면 상대를 쉽게 몰아붙이는 편이다.", "factor": "agreeableness", "reverse": true },
+    { "id": "bf_n_1", "text": "나는 스트레스 상황에서 걱정이 커지는 편이다.", "factor": "neuroticism", "reverse": false },
+    { "id": "bf_n_2", "text": "나는 압박감 속에서도 감정적으로 안정적인 편이다.", "factor": "neuroticism", "reverse": true },
+    {
+      "id": "bf_attention_1",
+      "text": "응답 확인을 위해 이 문항은 '보통이다'를 선택해 주세요.",
+      "factor": "validity",
+      "excludeFromScoring": true,
+      "attentionCheck": { "expected": 3 }
+    }
+  ],
+  "subscales": {
+    "openness": { "label": "개방성", "method": "mean", "items": ["bf_o_1", "bf_o_2"] },
+    "conscientiousness": { "label": "성실성", "method": "mean", "items": ["bf_c_1", "bf_c_2"] },
+    "extraversion": { "label": "외향성", "method": "mean", "items": ["bf_e_1", "bf_e_2"] },
+    "agreeableness": { "label": "우호성", "method": "mean", "items": ["bf_a_1", "bf_a_2"] },
+    "neuroticism": { "label": "신경성", "method": "mean", "items": ["bf_n_1", "bf_n_2"] }
+  },
+  "consistencyPairs": [
+    { "id": "openness_pair", "leftItemId": "bf_o_1", "rightItemId": "bf_o_2", "maxDifference": 2 },
+    { "id": "conscientiousness_pair", "leftItemId": "bf_c_1", "rightItemId": "bf_c_2", "maxDifference": 2 },
+    { "id": "extraversion_pair", "leftItemId": "bf_e_1", "rightItemId": "bf_e_2", "maxDifference": 2 },
+    { "id": "agreeableness_pair", "leftItemId": "bf_a_1", "rightItemId": "bf_a_2", "maxDifference": 2 },
+    { "id": "neuroticism_pair", "leftItemId": "bf_n_1", "rightItemId": "bf_n_2", "maxDifference": 2 }
+  ]
+}

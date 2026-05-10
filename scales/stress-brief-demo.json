@@ -1,0 +1,44 @@
+{
+  "id": "stress_brief_demo_v1",
+  "name": "Stress Brief Demo",
+  "version": "0.1.0",
+  "language": "ko",
+  "measurementStatus": "demo_not_validated",
+  "notice": "Demo item bank for wellbeing screening prototypes only; it is not a diagnostic instrument.",
+  "responseScale": {
+    "min": 1,
+    "max": 5,
+    "labels": {
+      "1": "전혀 아니다",
+      "2": "아니다",
+      "3": "보통이다",
+      "4": "그렇다",
+      "5": "매우 그렇다"
+    }
+  },
+  "items": [
+    { "id": "st_load_1", "text": "최근 해야 할 일이 감당하기 어렵게 느껴졌다.", "factor": "perceived_load", "reverse": false },
+    { "id": "st_load_2", "text": "최근 일상적인 요구를 충분히 다룰 수 있다고 느꼈다.", "factor": "perceived_load", "reverse": true },
+    { "id": "st_tension_1", "text": "최근 몸이나 마음이 쉽게 긴장되었다.", "factor": "tension", "reverse": false },
+    { "id": "st_tension_2", "text": "최근 휴식 후 긴장이 잘 풀리는 편이었다.", "factor": "tension", "reverse": true },
+    { "id": "st_recovery_1", "text": "최근 쉬어도 피로가 충분히 회복되지 않았다.", "factor": "recovery_difficulty", "reverse": false },
+    { "id": "st_recovery_2", "text": "최근 잠시 쉬면 다시 집중할 힘이 생겼다.", "factor": "recovery_difficulty", "reverse": true },
+    {
+      "id": "st_attention_1",
+      "text": "응답 확인을 위해 이 문항은 '아니다'를 선택해 주세요.",
+      "factor": "validity",
+      "excludeFromScoring": true,
+      "attentionCheck": { "expected": 2 }
+    }
+  ],
+  "subscales": {
+    "perceived_load": { "label": "지각된 부담", "method": "mean", "items": ["st_load_1", "st_load_2"] },
+    "tension": { "label": "긴장", "method": "mean", "items": ["st_tension_1", "st_tension_2"] },
+    "recovery_difficulty": { "label": "회복 어려움", "method": "mean", "items": ["st_recovery_1", "st_recovery_2"] }
+  },
+  "consistencyPairs": [
+    { "id": "stress_load_pair", "leftItemId": "st_load_1", "rightItemId": "st_load_2", "maxDifference": 2 },
+    { "id": "stress_tension_pair", "leftItemId": "st_tension_1", "rightItemId": "st_tension_2", "maxDifference": 2 },
+    { "id": "stress_recovery_pair", "leftItemId": "st_recovery_1", "rightItemId": "st_recovery_2", "maxDifference": 2 }
+  ]
+}
