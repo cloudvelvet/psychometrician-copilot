@@ -68,6 +68,7 @@ async function init() {
   wireTabs();
   wireConsultation();
   wireAssessment();
+  wireResultPanel();
   fillConsultationForm(SAMPLE_CONTEXT);
   renderConsultation();
   await loadScaleList();
@@ -124,6 +125,70 @@ function wireAssessment() {
     state.responses[target.name] = Number(target.value);
     updateProgress();
   });
+}
+
+function wireResultPanel() {
+  nodes.resultPanel.addEventListener("click", async (event) => {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const button = event.target.closest("[data-report-action]");
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    await handleReportAction(button);
+  });
+}
+
+async function handleReportAction(button) {
+  const action = button.dataset.reportAction;
+  if (action === "copy_brief") {
+    await copyReportBrief(button);
+    return;
+  }
+  if (action === "jump_to_evidence") {
+    scrollToReportSection(".evidence-grid");
+    return;
+  }
+  if (action === "review_flags") {
+    scrollToReportSection(".warning-surface, .warning-list");
+    return;
+  }
+  if (action === "export_report") {
+    window.print();
+    return;
+  }
+  if (action === "edit_inputs") {
+    setMode("consult");
+    document.querySelector("#consultMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action === "edit_answers") {
+    setMode("score");
+    document.querySelector("#scoreMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function copyReportBrief(button) {
+  const originalLabel = button.textContent;
+  const text = nodes.resultPanel.querySelector(".report-hero")?.textContent?.trim() ?? "";
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = "Copied";
+  } catch {
+    button.textContent = "Copy failed";
+  } finally {
+    window.setTimeout(() => {
+      button.textContent = originalLabel;
+    }, 1200);
+  }
+}
+
+function scrollToReportSection(selector) {
+  const target = nodes.resultPanel.querySelector(selector)?.closest(".result-section") ??
+    nodes.resultPanel.querySelector(selector);
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function loadScaleList() {
@@ -204,6 +269,8 @@ function renderConsultation() {
         </span>
       </header>
 
+      ${renderReportToolbar(["Copy brief", "Jump to evidence", "Export report", "Edit inputs"])}
+
       <section class="metric-grid">
         ${renderMetric("입력 완성도", `${completion}%`, renderBar(completion))}
         ${renderMetric("추천 분석", `${consultation.recommendedAnalyses.length}개`, "CFA · IRT · DIF")}
@@ -211,12 +278,77 @@ function renderConsultation() {
         ${renderMetric("경고", `${errors} error · ${flags} flag`, "critic review")}
       </section>
 
+      ${renderConsultationBrief(consultation, { completion, errors, flags })}
+      ${renderConsultationActionRail(consultation)}
+      ${renderConsultationChat(consultation)}
       ${renderMissingInfo(consultation)}
+      ${renderWarnings(consultation.critic.warnings)}
       ${renderAnalysisRoadmap(consultation.recommendedAnalyses)}
       ${renderEvidenceTopics(consultation.evidence)}
       ${renderCodeTemplates(consultation.codeTemplates)}
-      ${renderWarnings(consultation.critic.warnings)}
     </article>
+  `;
+}
+
+function renderConsultationBrief(consultation, { completion, errors, flags }) {
+  const primary = consultation.recommendedAnalyses[0];
+  const missing = consultation.uncertain.length;
+  const verdict = errors > 0
+    ? "검토 후 진행"
+    : flags > 0
+      ? "전문가 검토 필요"
+      : "보고 준비 가능";
+  const summary = primary
+    ? `현재 설계에서는 ${primary.title}을 먼저 고정하고, 그 다음 분석을 단계적으로 연결하는 흐름이 가장 안전합니다.`
+    : "현재 입력만으로는 추천 분석을 확정하기 어렵습니다. 핵심 설계 정보를 먼저 보강하세요.";
+
+  return `
+    <section class="report-hero">
+      <div class="report-hero-main">
+        <p class="eyebrow">Executive Brief</p>
+        <h3>${escapeHtml(verdict)}</h3>
+        <p>${escapeHtml(summary)}</p>
+      </div>
+      <div class="report-hero-aside">
+        <span>Readiness</span>
+        <strong>${completion}%</strong>
+        ${renderBar(completion)}
+        <small>${missing === 0 ? "필수 설계 정보가 채워졌습니다." : `${missing}개 설계 정보가 더 필요합니다.`}</small>
+      </div>
+    </section>
+  `;
+}
+
+function renderConsultationActionRail(consultation) {
+  const actions = consultation.recommendedAnalyses.slice(0, 3).map((analysis) => ({
+    title: analysis.title,
+    meta: `${analysis.priority} priority · ${analysis.confidence} confidence`,
+    body: analysis.output
+  }));
+  return renderActionRail("Next Best Actions", actions);
+}
+
+function renderConsultationChat(consultation) {
+  const nextQuestion = consultation.critic.nextQuestions[0] ?? "원자료의 결측, 범주 분포, 집단별 표본 크기를 확인하세요.";
+  const guidance = consultation.reportingGuidance[0] ?? "관찰된 결과와 구성개념 해석을 분리해서 보고하세요.";
+  const boundary = consultation.agentBoundaries[0];
+
+  return `
+    <section class="ai-panel">
+      <div class="ai-panel-header">
+        <div>
+          <p class="eyebrow">AI Consultation Draft</p>
+          <h3>상담 문장 카드</h3>
+        </div>
+        <span>deterministic</span>
+      </div>
+      <div class="ai-bubble-list">
+        ${renderChatBubble("assistant", "현재 입력만 보면 분석 계획은 바로 확정하기보다, 데이터 스크리닝과 측정모형 확인을 먼저 고정하는 쪽이 좋습니다.")}
+        ${renderChatBubble("assistant", guidance)}
+        ${renderChatBubble("user", `다음에 확인할 질문: ${nextQuestion}`)}
+        ${renderChatBubble("guardrail", boundary)}
+      </div>
+    </section>
   `;
 }
 
@@ -387,11 +519,17 @@ function renderScoreResult() {
         <span class="status-pill ${validity.className}">${validity.label}</span>
       </header>
 
+      ${renderReportToolbar(["Copy brief", "Review flags", "Export report", "Edit answers"])}
+
       <section class="metric-grid">
         ${renderMetric("전체 평균", `${formatNumber(result.scoring.overall.score)} / ${scaleMax}`, renderBar(scorePercent(result.scoring.overall.score, scaleMin, scaleMax)))}
         ${renderMetric("응답 상태", result.validity.flag, validity.description)}
         ${renderMetric("응답 문항", `${result.scoring.overall.answeredItems}개`, "scored items")}
       </section>
+
+      ${renderScoreBrief(result, validity, scaleMin, scaleMax)}
+      ${renderScoreActionRail(result)}
+      ${renderScoreCounselingPanel(result, scaleMin, scaleMax)}
 
       ${warnings.length > 0 ? `
         <section class="result-section warning-surface">
@@ -411,6 +549,144 @@ function renderScoreResult() {
         <h3>해석 경계</h3>
         <p class="soft-copy">이 결과는 진단이 아니라 응답 경향을 정리한 참고 자료입니다. 실제 서비스에는 검증되거나 라이선스가 확보된 척도와 개인정보 보호 절차가 필요합니다.</p>
       </section>
+    </article>
+  `;
+}
+
+function renderScoreBrief(result, validity, min, max) {
+  const projection = result.interpretationInput;
+  const highest = projection.scores.highest[0];
+  const lowest = projection.scores.lowest[0];
+  const overallPercent = scorePercent(result.scoring.overall.score, min, max);
+  const headline = validity.className === "danger"
+    ? "해석 보류가 필요합니다"
+    : validity.className === "warning"
+      ? "주의 문구와 함께 검토하세요"
+      : "비진단 피드백 초안 생성 가능";
+
+  return `
+    <section class="report-hero score-hero">
+      <div class="report-hero-main">
+        <p class="eyebrow">Client Report Preview</p>
+        <h3>${escapeHtml(headline)}</h3>
+        <p>${escapeHtml(buildScoreSummary(highest, lowest))}</p>
+      </div>
+      <div class="report-hero-aside">
+        <span>Overall</span>
+        <strong>${formatNumber(result.scoring.overall.score)}</strong>
+        ${renderBar(overallPercent)}
+        <small>${escapeHtml(validity.description)}</small>
+      </div>
+    </section>
+  `;
+}
+
+function renderScoreActionRail(result) {
+  const projection = result.interpretationInput;
+  const actions = [
+    {
+      title: "상담 문장 검토",
+      meta: "non-diagnostic",
+      body: "응답 패턴은 경향으로만 설명하고, 진단이나 선발 판단으로 확장하지 않습니다."
+    },
+    {
+      title: "품질 플래그 확인",
+      meta: result.validity.flag,
+      body: result.validity.warnings.length > 0
+        ? "주의 플래그가 있으므로 해석 전에 응답 품질을 먼저 확인하세요."
+        : "현재 응답 패턴에서는 차단 수준의 품질 경고가 없습니다."
+    },
+    {
+      title: "AI 전달 DTO",
+      meta: projection.schemaVersion,
+      body: "원응답 배열 없이 점수, 경계, 척도 출처만 전달하는 안전한 보고 입력입니다."
+    }
+  ];
+  return renderActionRail("Report Workflow", actions);
+}
+
+function renderScoreCounselingPanel(result, min, max) {
+  const projection = result.interpretationInput;
+  const highest = projection.scores.highest[0];
+  const lowest = projection.scores.lowest[0];
+  const highBand = highest ? scoreBand(highest.score, min, max).label : "보류";
+  const lowBand = lowest ? scoreBand(lowest.score, min, max).label : "보류";
+
+  return `
+    <section class="ai-panel">
+      <div class="ai-panel-header">
+        <div>
+          <p class="eyebrow">AI Counseling Draft</p>
+          <h3>상담 채팅 패널</h3>
+        </div>
+        <span>safe DTO</span>
+      </div>
+      <div class="ai-bubble-list">
+        ${renderChatBubble("assistant", buildScoreSummary(highest, lowest))}
+        ${renderChatBubble("assistant", highest
+          ? `${highest.label} 점수는 ${formatNumber(highest.score)}점으로 ${highBand} 범주에 가깝습니다. 이 결과는 성향을 살펴보는 출발점으로만 사용하세요.`
+          : "완료된 하위척도가 부족해 높은 경향을 요약하기 어렵습니다.")}
+        ${renderChatBubble("user", lowest
+          ? `대화 질문: ${lowest.label}이 ${lowBand}로 나타난 상황적 이유를 함께 확인해보세요.`
+          : "대화 질문: 응답하지 않은 문항이 있는지 먼저 확인해보세요.")}
+        ${renderChatBubble("guardrail", "이 패널은 점수를 다시 계산하지 않습니다. 결정론적 채점 결과를 설명하기 위한 문장 초안입니다.")}
+      </div>
+    </section>
+  `;
+}
+
+function buildScoreSummary(highest, lowest) {
+  if (!highest && !lowest) {
+    return "채점 가능한 하위척도 결과가 아직 충분하지 않습니다.";
+  }
+  if (highest && lowest) {
+    return `응답 패턴은 ${highest.label} 쪽이 상대적으로 두드러지고, ${lowest.label} 쪽은 낮게 나타난 편입니다.`;
+  }
+  return `${highest?.label ?? lowest?.label} 결과를 중심으로 응답 경향을 조심스럽게 살펴볼 수 있습니다.`;
+}
+
+function renderReportToolbar(actions) {
+  return `
+    <div class="report-toolbar" aria-label="Report actions">
+      ${actions.map((action) => `
+        <button type="button" class="report-tool" data-report-action="${reportActionId(action)}">${escapeHtml(action)}</button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function reportActionId(action) {
+  return action.toLowerCase().replaceAll(" ", "_");
+}
+
+function renderActionRail(title, actions) {
+  return `
+    <section class="result-section action-rail">
+      <div class="section-title-row">
+        <h3>${escapeHtml(title)}</h3>
+        <span class="count-badge">${actions.length}</span>
+      </div>
+      <div class="action-grid">
+        ${actions.map((action, index) => `
+          <article class="action-card">
+            <div class="action-index">${index + 1}</div>
+            <div>
+              <strong>${escapeHtml(action.title)}</strong>
+              <span>${escapeHtml(action.meta)}</span>
+              <p>${escapeHtml(action.body)}</p>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderChatBubble(tone, message) {
+  return `
+    <article class="ai-bubble ${tone}">
+      <span>${tone === "user" ? "Next question" : tone === "guardrail" ? "Boundary" : "Copilot"}</span>
+      <p>${escapeHtml(message)}</p>
     </article>
   `;
 }
