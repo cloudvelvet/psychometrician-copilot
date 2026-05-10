@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Deterministic psychometric scoring engine MVP for AI-agent workflows.",
   "scripts": {
+    "build": "node bin/build-static.mjs",
     "test": "node --test",
     "demo": "node examples/run-demo.mjs",
     "assess": "node bin/assess.mjs",

@@ -76,6 +76,13 @@ npm.cmd run web
 
 Open `http://localhost:4173` to test the browser UI. For Vercel, import the GitHub repository and deploy it as a static project. The app entrypoint is `index.html`.
 
+Vercel uses `vercel.json` to run `npm run build` and serve the generated `public/` directory. If Vercel shows `404: NOT_FOUND`, check the project settings:
+
+- Framework Preset: `Other`
+- Root Directory: the folder that contains this `package.json`
+- Build Command: `npm run build`
+- Output Directory: `public`
+
 ## Minimal Usage
 
 ```js
