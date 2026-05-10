@@ -55,6 +55,10 @@
               <span class="tab-icon" aria-hidden="true">S</span>
               척도 채점
             </button>
+            <button class="tab-button" type="button" data-mode="upload">
+              <span class="tab-icon" aria-hidden="true">D</span>
+              데이터 업로드
+            </button>
           </nav>
 
           <div class="side-card">
@@ -178,6 +182,72 @@
 
             <div class="sticky-actions">
               <button id="scoreButton" type="button" class="primary-button">채점 리포트 보기</button>
+            </div>
+          </section>
+
+          <section class="mode-panel" id="uploadMode" aria-labelledby="uploadTitle">
+            <header class="panel-header">
+              <div>
+                <p class="eyebrow">Dataset Scoring</p>
+                <h2 id="uploadTitle">CSV/Excel 데이터 업로드</h2>
+                <p>파일은 서버로 전송하지 않고 브라우저 안에서만 읽습니다. 문항 컬럼, 역채점, 요인, 집단 변수를 매핑해 코호트 요약 리포트를 만듭니다.</p>
+              </div>
+              <button class="ghost-button" type="button" id="sampleDataButton">샘플 데이터</button>
+            </header>
+
+            <div class="upload-form">
+              <label class="file-picker">
+                <span>데이터 파일</span>
+                <input id="dataFileInput" type="file" accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                <small>CSV, TSV, TXT, XLSX 첫 시트를 지원합니다. 첫 행은 컬럼명이어야 합니다.</small>
+              </label>
+
+              <div id="uploadSummary" class="upload-summary">
+                <strong>아직 불러온 데이터가 없습니다.</strong>
+                <p>파일을 선택하면 컬럼 매핑 표가 여기에 표시됩니다.</p>
+              </div>
+
+              <section id="dataMappingPanel" class="mapping-panel" hidden>
+                <div class="form-grid">
+                  <label>
+                    <span>응답 최솟값</span>
+                    <input id="uploadScaleMinInput" type="number" value="1">
+                  </label>
+                  <label>
+                    <span>응답 최댓값</span>
+                    <input id="uploadScaleMaxInput" type="number" value="5">
+                  </label>
+                  <label>
+                    <span>하위척도 점수 방식</span>
+                    <select id="uploadScoreMethodInput">
+                      <option value="mean">평균</option>
+                      <option value="sum">합계</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>집단 변수</span>
+                    <select id="uploadGroupSelect"></select>
+                  </label>
+                </div>
+
+                <div class="mapping-header">
+                  <div>
+                    <p class="eyebrow">Column Mapping</p>
+                    <h3>문항 컬럼 매핑</h3>
+                  </div>
+                  <p>문항으로 사용할 컬럼을 선택하고, 역채점 여부와 요인명을 지정하세요.</p>
+                </div>
+
+                <div id="uploadMappingList" class="mapping-list"></div>
+
+                <div class="form-actions">
+                  <p class="upload-note">원자료는 저장되지 않습니다. 계산된 요약값만 오른쪽 리포트에 표시됩니다.</p>
+                  <div class="button-row">
+                    <button id="clearDataButton" class="ghost-button" type="button">초기화</button>
+                    <button id="analyzeDataButton" class="primary-button" type="button">데이터 리포트 보기</button>
+                  </div>
+                </div>
+              </section>
             </div>
           </section>
         </section>

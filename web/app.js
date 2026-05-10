@@ -1,4 +1,5 @@
 import { createCopilotConsultation } from "../src/copilot.js";
+import { cronbachAlpha } from "../src/reliability.js";
 import { scoreAssessment } from "../src/score.js";
 
 const SCALE_FILES = [
@@ -26,13 +27,23 @@ const SAMPLE_CONTEXT = {
 const state = {
   mode: "consult",
   scale: null,
-  responses: {}
+  responses: {},
+  upload: {
+    fileName: null,
+    headers: [],
+    rows: [],
+    mappings: []
+  }
 };
 
 const nodes = {
   assessmentForm: document.querySelector("#assessmentForm"),
+  analyzeDataButton: document.querySelector("#analyzeDataButton"),
+  clearDataButton: document.querySelector("#clearDataButton"),
   consultForm: document.querySelector("#consultForm"),
   constructInput: document.querySelector("#constructInput"),
+  dataFileInput: document.querySelector("#dataFileInput"),
+  dataMappingPanel: document.querySelector("#dataMappingPanel"),
   expectedFactorsInput: document.querySelector("#expectedFactorsInput"),
   groupComparisonInput: document.querySelector("#groupComparisonInput"),
   groupsInput: document.querySelector("#groupsInput"),
@@ -46,6 +57,7 @@ const nodes = {
   resetButton: document.querySelector("#resetButton"),
   resultPanel: document.querySelector("#resultPanel"),
   sampleConsultButton: document.querySelector("#sampleConsultButton"),
+  sampleDataButton: document.querySelector("#sampleDataButton"),
   sampleSizeInput: document.querySelector("#sampleSizeInput"),
   scaleMaxInput: document.querySelector("#scaleMaxInput"),
   scaleMeta: document.querySelector("#scaleMeta"),
@@ -53,7 +65,13 @@ const nodes = {
   scaleSelect: document.querySelector("#scaleSelect"),
   scaleTitle: document.querySelector("#scaleTitle"),
   scoreButton: document.querySelector("#scoreButton"),
-  tabButtons: [...document.querySelectorAll(".tab-button")]
+  tabButtons: [...document.querySelectorAll(".tab-button")],
+  uploadGroupSelect: document.querySelector("#uploadGroupSelect"),
+  uploadMappingList: document.querySelector("#uploadMappingList"),
+  uploadScaleMaxInput: document.querySelector("#uploadScaleMaxInput"),
+  uploadScaleMinInput: document.querySelector("#uploadScaleMinInput"),
+  uploadScoreMethodInput: document.querySelector("#uploadScoreMethodInput"),
+  uploadSummary: document.querySelector("#uploadSummary")
 };
 
 init().catch((error) => {
@@ -68,6 +86,7 @@ async function init() {
   wireTabs();
   wireConsultation();
   wireAssessment();
+  wireUpload();
   wireResultPanel();
   fillConsultationForm(SAMPLE_CONTEXT);
   renderConsultation();
@@ -91,8 +110,10 @@ function setMode(mode) {
 
   if (mode === "consult") {
     renderConsultation();
-  } else if (state.scale) {
+  } else if (mode === "score" && state.scale) {
     renderEmptyScoreState();
+  } else if (mode === "upload") {
+    renderUploadEmptyState();
   }
 }
 
@@ -129,6 +150,33 @@ function wireAssessment() {
     state.responses[target.name] = Number(target.value);
     updateProgress();
   });
+}
+
+function wireUpload() {
+  nodes.dataFileInput.addEventListener("change", async () => {
+    const file = nodes.dataFileInput.files?.[0];
+    if (!file) {
+      return;
+    }
+    await loadUploadedFile(file);
+  });
+
+  nodes.sampleDataButton.addEventListener("click", () => {
+    loadUploadedDataset({
+      fileName: "sample-likert-data.csv",
+      headers: ["respondent_id", "group_id", "wb_1", "wb_2", "wb_3_r", "stress_1", "stress_2_r", "stress_3"],
+      rows: buildSampleDataset()
+    });
+    setMode("upload");
+  });
+
+  nodes.clearDataButton.addEventListener("click", () => resetUploadState());
+  nodes.analyzeDataButton.addEventListener("click", () => {
+    renderUploadReport();
+    focusResultPanel();
+  });
+  nodes.uploadMappingList.addEventListener("input", syncUploadMappingsFromUi);
+  nodes.uploadMappingList.addEventListener("change", syncUploadMappingsFromUi);
 }
 
 function wireResultPanel() {
@@ -171,6 +219,11 @@ async function handleReportAction(button) {
   if (action === "edit_answers") {
     setMode("score");
     document.querySelector("#scoreMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action === "edit_upload") {
+    setMode("upload");
+    document.querySelector("#uploadMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -223,6 +276,440 @@ async function loadSelectedScale() {
   if (state.mode === "score") {
     renderEmptyScoreState();
   }
+}
+
+async function loadUploadedFile(file) {
+  try {
+    const parsed = await parseUploadedFile(file);
+    loadUploadedDataset({
+      fileName: file.name,
+      headers: parsed.headers,
+      rows: parsed.rows
+    });
+  } catch (error) {
+    nodes.uploadSummary.innerHTML = `
+      <strong>파일을 읽지 못했습니다.</strong>
+      <p>${escapeHtml(error.message)}</p>
+    `;
+    nodes.dataMappingPanel.hidden = true;
+    nodes.resultPanel.innerHTML = renderMessage({
+      title: "업로드 실패",
+      body: error.message,
+      tone: "danger"
+    });
+  }
+}
+
+function loadUploadedDataset({ fileName, headers, rows }) {
+  const cleanHeaders = uniquifyHeaders(headers.map((header) => String(header ?? "").trim()));
+  const cleanRows = rows
+    .map((row) => normalizeUploadedRow(row, cleanHeaders))
+    .filter((row) => cleanHeaders.some((header) => String(row[header] ?? "").trim() !== ""));
+
+  if (cleanHeaders.length === 0 || cleanRows.length === 0) {
+    throw new Error("헤더와 데이터 행이 있는 파일을 올려주세요.");
+  }
+
+  state.upload = {
+    fileName,
+    headers: cleanHeaders,
+    rows: cleanRows,
+    mappings: inferUploadMappings(cleanHeaders, cleanRows)
+  };
+
+  renderUploadMapping();
+  renderUploadEmptyState();
+}
+
+function resetUploadState() {
+  state.upload = {
+    fileName: null,
+    headers: [],
+    rows: [],
+    mappings: []
+  };
+  nodes.dataFileInput.value = "";
+  nodes.dataMappingPanel.hidden = true;
+  nodes.uploadSummary.innerHTML = `
+    <strong>아직 불러온 데이터가 없습니다.</strong>
+    <p>파일을 선택하면 컬럼 매핑 표가 여기에 표시됩니다.</p>
+  `;
+  renderUploadEmptyState();
+}
+
+function renderUploadMapping() {
+  const { fileName, headers, rows, mappings } = state.upload;
+  nodes.uploadSummary.innerHTML = `
+    <strong>${escapeHtml(fileName ?? "uploaded data")}</strong>
+    <p>${rows.length}명 · ${headers.length}개 컬럼을 브라우저에서 읽었습니다. 선택한 문항만 채점에 사용됩니다.</p>
+  `;
+  nodes.dataMappingPanel.hidden = false;
+  nodes.uploadGroupSelect.innerHTML = `
+    <option value="">집단 변수 없음</option>
+    ${headers.map((header) => `<option value="${escapeHtml(header)}">${escapeHtml(header)}</option>`).join("")}
+  `;
+  const inferredGroup = headers.find((header) => /group|gender|sex|condition|class|집단|성별/i.test(header));
+  nodes.uploadGroupSelect.value = inferredGroup ?? "";
+
+  nodes.uploadMappingList.innerHTML = mappings.map((mapping, index) => `
+    <article class="mapping-row" data-index="${index}">
+      <label class="switch mapping-include">
+        <input type="checkbox" data-field="include" ${mapping.include ? "checked" : ""}>
+        <span>${escapeHtml(mapping.column)}</span>
+      </label>
+      <label>
+        <span>요인</span>
+        <input type="text" data-field="factor" value="${escapeHtml(mapping.factor)}" placeholder="예: factor_1">
+      </label>
+      <label class="switch">
+        <input type="checkbox" data-field="reverse" ${mapping.reverse ? "checked" : ""}>
+        <span>역채점</span>
+      </label>
+      <span class="data-pill">${mapping.numericRate}% numeric</span>
+    </article>
+  `).join("");
+}
+
+function syncUploadMappingsFromUi() {
+  state.upload.mappings = [...nodes.uploadMappingList.querySelectorAll(".mapping-row")].map((row) => {
+    const index = Number(row.dataset.index);
+    const previous = state.upload.mappings[index];
+    return {
+      ...previous,
+      include: row.querySelector('[data-field="include"]')?.checked ?? false,
+      reverse: row.querySelector('[data-field="reverse"]')?.checked ?? false,
+      factor: row.querySelector('[data-field="factor"]')?.value.trim() || previous.factor
+    };
+  });
+}
+
+function renderUploadEmptyState() {
+  if (state.upload.rows.length > 0) {
+    nodes.resultPanel.innerHTML = renderMessage({
+      title: "데이터 매핑을 확인하세요",
+      body: "문항 컬럼, 역채점, 요인명, 집단 변수를 확인한 뒤 데이터 리포트 보기를 누르면 코호트 요약이 오른쪽에 표시됩니다.",
+      tone: "neutral"
+    });
+    return;
+  }
+
+  nodes.resultPanel.innerHTML = renderMessage({
+    title: "업로드 데이터가 없습니다",
+    body: "CSV, TSV, TXT, XLSX 파일을 선택하면 데이터는 서버로 전송되지 않고 브라우저 안에서만 분석됩니다.",
+    tone: "neutral"
+  });
+}
+
+async function parseUploadedFile(file) {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "xlsx") {
+    return parseXlsxFile(await file.arrayBuffer());
+  }
+  const text = await file.text();
+  return parseDelimitedText(text);
+}
+
+function parseDelimitedText(text) {
+  const rows = parseDelimitedRows(stripBom(text), detectDelimiter(text));
+  if (rows.length < 2) {
+    throw new Error("최소 헤더 1행과 데이터 1행이 필요합니다.");
+  }
+  const headers = uniquifyHeaders(rows[0].map((value) => String(value ?? "").trim()));
+  const body = rows.slice(1).map((row) => Object.fromEntries(headers.map((header, index) => [
+    header,
+    row[index] ?? ""
+  ])));
+  return { headers, rows: body };
+}
+
+function parseDelimitedRows(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && char === delimiter) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if (!inQuotes && (char === "\n" || char === "\r")) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(cell);
+      if (row.some((value) => value !== "")) {
+        rows.push(row);
+      }
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  row.push(cell);
+  if (row.some((value) => value !== "")) {
+    rows.push(row);
+  }
+  return rows;
+}
+
+function detectDelimiter(text) {
+  const sample = stripBom(text).split(/\r?\n/).slice(0, 10).join("\n");
+  const candidates = [",", "\t", ";"];
+  return candidates
+    .map((delimiter) => ({
+      delimiter,
+      count: [...sample].filter((char) => char === delimiter).length
+    }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter ?? ",";
+}
+
+async function parseXlsxFile(buffer) {
+  const entries = await readZipEntries(buffer);
+  const workbook = parseXml(await readZipText(entries, "xl/workbook.xml"));
+  const rels = parseXml(await readZipText(entries, "xl/_rels/workbook.xml.rels"));
+  const sheet = workbook.querySelector("sheet");
+  const relationId = sheet?.getAttribute("r:id");
+  if (!relationId) {
+    throw new Error("XLSX 첫 시트를 찾지 못했습니다.");
+  }
+
+  const relationship = [...rels.querySelectorAll("Relationship")]
+    .find((rel) => rel.getAttribute("Id") === relationId);
+  const target = relationship?.getAttribute("Target");
+  if (!target) {
+    throw new Error("XLSX 시트 관계 정보를 읽지 못했습니다.");
+  }
+
+  const worksheetPath = normalizeXlsxPath(target);
+  const sharedStrings = entries.has("xl/sharedStrings.xml")
+    ? parseSharedStrings(parseXml(await readZipText(entries, "xl/sharedStrings.xml")))
+    : [];
+  const worksheet = parseXml(await readZipText(entries, worksheetPath));
+  return parseWorksheetXml(worksheet, sharedStrings);
+}
+
+async function readZipEntries(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const eocdOffset = findEndOfCentralDirectory(view);
+  const recordCount = view.getUint16(eocdOffset + 10, true);
+  let offset = view.getUint32(eocdOffset + 16, true);
+  const entries = new Map();
+
+  for (let index = 0; index < recordCount; index += 1) {
+    if (view.getUint32(offset, true) !== 0x02014b50) {
+      throw new Error("XLSX ZIP 중앙 디렉터리를 읽지 못했습니다.");
+    }
+    const method = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const fileNameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const localHeaderOffset = view.getUint32(offset + 42, true);
+    const fileName = decodeUtf8(bytes.slice(offset + 46, offset + 46 + fileNameLength));
+    const localNameLength = view.getUint16(localHeaderOffset + 26, true);
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+    const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+    entries.set(fileName.replaceAll("\\", "/"), {
+      method,
+      compressed
+    });
+    offset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  const inflated = new Map();
+  for (const [name, entry] of entries) {
+    inflated.set(name, await inflateZipEntry(entry));
+  }
+  return inflated;
+}
+
+function findEndOfCentralDirectory(view) {
+  const minOffset = Math.max(0, view.byteLength - 65557);
+  for (let offset = view.byteLength - 22; offset >= minOffset; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) {
+      return offset;
+    }
+  }
+  throw new Error("XLSX ZIP 구조를 찾지 못했습니다.");
+}
+
+async function inflateZipEntry(entry) {
+  if (entry.method === 0) {
+    return entry.compressed;
+  }
+  if (entry.method !== 8) {
+    throw new Error("지원하지 않는 XLSX 압축 방식입니다.");
+  }
+  if (!("DecompressionStream" in window)) {
+    throw new Error("이 브라우저는 XLSX 압축 해제를 지원하지 않습니다. CSV로 저장해서 올려주세요.");
+  }
+  const stream = new Blob([entry.compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function readZipText(entries, path) {
+  const bytes = entries.get(path);
+  if (!bytes) {
+    throw new Error(`${path} 파일을 XLSX 안에서 찾지 못했습니다.`);
+  }
+  return decodeUtf8(bytes);
+}
+
+function parseXml(text) {
+  const document = new DOMParser().parseFromString(text, "application/xml");
+  if (document.querySelector("parsererror")) {
+    throw new Error("XLSX XML을 읽지 못했습니다.");
+  }
+  return document;
+}
+
+function parseSharedStrings(document) {
+  return [...document.querySelectorAll("si")].map((item) => (
+    [...item.querySelectorAll("t")].map((node) => node.textContent ?? "").join("")
+  ));
+}
+
+function parseWorksheetXml(document, sharedStrings) {
+  const grid = [];
+  for (const cell of document.querySelectorAll("sheetData c")) {
+    const reference = cell.getAttribute("r") ?? "";
+    const { rowIndex, columnIndex } = parseCellReference(reference);
+    if (rowIndex < 0 || columnIndex < 0) {
+      continue;
+    }
+    grid[rowIndex] ??= [];
+    grid[rowIndex][columnIndex] = readCellValue(cell, sharedStrings);
+  }
+
+  const rows = grid
+    .filter(Boolean)
+    .map((row) => row.map((value) => value ?? ""));
+  if (rows.length < 2) {
+    throw new Error("XLSX 첫 시트에 헤더와 데이터 행이 필요합니다.");
+  }
+  const headers = uniquifyHeaders(rows[0].map((value) => String(value ?? "").trim()));
+  const body = rows.slice(1).map((row) => Object.fromEntries(headers.map((header, index) => [
+    header,
+    row[index] ?? ""
+  ])));
+  return { headers, rows: body };
+}
+
+function readCellValue(cell, sharedStrings) {
+  const type = cell.getAttribute("t");
+  if (type === "inlineStr") {
+    return [...cell.querySelectorAll("is t")].map((node) => node.textContent ?? "").join("");
+  }
+  const value = cell.querySelector("v")?.textContent ?? "";
+  if (type === "s") {
+    return sharedStrings[Number(value)] ?? "";
+  }
+  if (type === "b") {
+    return value === "1" ? "TRUE" : "FALSE";
+  }
+  return value;
+}
+
+function parseCellReference(reference) {
+  const match = reference.match(/^([A-Z]+)(\d+)$/i);
+  if (!match) {
+    return { rowIndex: -1, columnIndex: -1 };
+  }
+  const columnIndex = [...match[1].toUpperCase()].reduce((total, char) => (
+    total * 26 + char.charCodeAt(0) - 64
+  ), 0) - 1;
+  return {
+    rowIndex: Number(match[2]) - 1,
+    columnIndex
+  };
+}
+
+function normalizeXlsxPath(target) {
+  const path = target.replace(/^\/+/, "");
+  return path.startsWith("xl/") ? path : `xl/${path}`;
+}
+
+function inferUploadMappings(headers, rows) {
+  return headers.map((header) => {
+    const values = rows.map((row) => row[header]);
+    const numericRate = Math.round(numericValues(values).length / Math.max(1, values.filter((value) => value !== "").length) * 100);
+    const include = numericRate >= 80 && !/(^id$|respondent|participant|group|gender|sex|name|date|time|집단|성별|이름)/i.test(header);
+    return {
+      column: header,
+      include,
+      reverse: /(_r$|_rev$|reverse|역)/i.test(header),
+      factor: inferFactorName(header),
+      numericRate
+    };
+  });
+}
+
+function inferFactorName(header) {
+  const cleaned = header.replace(/(_r|_rev|reverse|역)$/i, "");
+  const match = cleaned.match(/^([A-Za-z가-힣]+)[_-]?\d+$/);
+  if (match) {
+    return match[1];
+  }
+  return cleaned.includes("_") ? cleaned.split("_")[0] : "total";
+}
+
+function normalizeUploadedRow(row, headers) {
+  if (Array.isArray(row)) {
+    return Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
+  }
+  return Object.fromEntries(headers.map((header) => [header, row[header] ?? ""]));
+}
+
+function uniquifyHeaders(headers) {
+  const counts = new Map();
+  return headers.map((header, index) => {
+    const base = header || `column_${index + 1}`;
+    const count = counts.get(base) ?? 0;
+    counts.set(base, count + 1);
+    return count === 0 ? base : `${base}_${count + 1}`;
+  });
+}
+
+function buildSampleDataset() {
+  return Array.from({ length: 24 }, (_, index) => ({
+    respondent_id: `R${String(index + 1).padStart(2, "0")}`,
+    group_id: index % 2 === 0 ? "group_a" : "group_b",
+    wb_1: 3 + (index % 3),
+    wb_2: 2 + (index % 4),
+    wb_3_r: 1 + (index % 5),
+    stress_1: 2 + (index % 3),
+    stress_2_r: 1 + ((index + 2) % 5),
+    stress_3: 3 + ((index + 1) % 3)
+  }));
+}
+
+function stripBom(text) {
+  return text.replace(/^\uFEFF/, "");
+}
+
+function decodeUtf8(bytes) {
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 function fillConsultationForm(context) {
@@ -573,6 +1060,321 @@ function renderScoreResult() {
   `;
 }
 
+function renderUploadReport() {
+  syncUploadMappingsFromUi();
+  let analysis;
+  try {
+    analysis = analyzeUploadedDataset();
+  } catch (error) {
+    nodes.resultPanel.innerHTML = renderMessage({
+      title: "데이터 리포트를 만들 수 없습니다",
+      body: error.message,
+      tone: "danger"
+    });
+    return;
+  }
+
+  const statusClass = analysis.invalidCellCount > 0 || analysis.missingRate > 0.15
+    ? "warning"
+    : "success";
+  const statusLabel = statusClass === "warning" ? "검토 필요" : "요약 가능";
+
+  nodes.resultPanel.innerHTML = `
+    <article class="result-stack">
+      <header class="result-heading">
+        <div>
+          <p class="eyebrow">Dataset Report</p>
+          <h2>${escapeHtml(analysis.fileName)}</h2>
+        </div>
+        <span class="status-pill ${statusClass}">${statusLabel}</span>
+      </header>
+
+      ${renderReportToolbar([
+        { label: "요약 복사", action: "copy_brief" },
+        { label: "경고 보기", action: "review_flags" },
+        { label: "PDF 저장", action: "export_report" },
+        { label: "매핑 수정", action: "edit_upload" }
+      ])}
+
+      <section class="metric-grid">
+        ${renderMetric("응답자", `${analysis.respondentCount}명`, "rows")}
+        ${renderMetric("문항 컬럼", `${analysis.itemCount}개`, "selected items")}
+        ${renderMetric("결측률", `${formatPercent(analysis.missingRate)}`, renderBar(100 - Math.round(analysis.missingRate * 100)))}
+        ${renderMetric("전체 α", analysis.overallAlpha === null ? "N/A" : formatNumber(analysis.overallAlpha), `${analysis.alphaRows} complete rows`)}
+      </section>
+
+      ${renderUploadBrief(analysis)}
+      ${renderUploadActions(analysis)}
+      ${renderUploadWarnings(analysis)}
+      ${renderUploadSubscales(analysis)}
+      ${renderUploadGroups(analysis)}
+      ${renderUploadPreview(analysis)}
+    </article>
+  `;
+}
+
+function analyzeUploadedDataset() {
+  const selected = selectedUploadMappings();
+  if (state.upload.rows.length === 0) {
+    throw new Error("먼저 데이터 파일을 올려주세요.");
+  }
+  if (selected.length === 0) {
+    throw new Error("문항으로 사용할 컬럼을 하나 이상 선택하세요.");
+  }
+
+  const scale = readUploadScale();
+  const method = nodes.uploadScoreMethodInput.value;
+  const groupColumn = nodes.uploadGroupSelect.value;
+  const totalCells = state.upload.rows.length * selected.length;
+  const factors = new Map();
+  for (const mapping of selected) {
+    const factor = mapping.factor || "total";
+    if (!factors.has(factor)) {
+      factors.set(factor, {
+        itemMappings: selected.filter((item) => (item.factor || "total") === factor),
+        rows: [],
+        values: []
+      });
+    }
+  }
+  let missingCellCount = 0;
+  let invalidCellCount = 0;
+  const allValues = [];
+  const allCompleteRows = [];
+  const groupSummaries = new Map();
+  const itemMissing = new Map(selected.map((mapping) => [mapping.column, 0]));
+
+  for (const row of state.upload.rows) {
+    const scoredRow = [];
+    let complete = true;
+    const group = groupColumn ? String(row[groupColumn] ?? "").trim() || "(blank)" : null;
+    const respondentValues = [];
+
+    for (const mapping of selected) {
+      const raw = parseNumericCell(row[mapping.column]);
+      if (raw === null) {
+        missingCellCount += 1;
+        itemMissing.set(mapping.column, (itemMissing.get(mapping.column) ?? 0) + 1);
+        complete = false;
+        continue;
+      }
+      if (raw < scale.min || raw > scale.max) {
+        invalidCellCount += 1;
+        complete = false;
+        continue;
+      }
+      const scored = mapping.reverse ? scale.min + scale.max - raw : raw;
+      scoredRow.push(scored);
+      respondentValues.push(scored);
+      allValues.push(scored);
+
+      factors.get(mapping.factor || "total").values.push(scored);
+    }
+
+    for (const [factor, summary] of factors) {
+      const factorValues = summary.itemMappings
+        .map((mapping) => {
+          const raw = parseNumericCell(row[mapping.column]);
+          if (raw === null || raw < scale.min || raw > scale.max) {
+            return null;
+          }
+          return mapping.reverse ? scale.min + scale.max - raw : raw;
+        });
+      if (factorValues.every((value) => value !== null)) {
+        summary.rows.push(factorValues);
+      }
+      factors.set(factor, summary);
+    }
+
+    if (complete) {
+      allCompleteRows.push(scoredRow);
+    }
+
+    if (group !== null) {
+      const current = groupSummaries.get(group) ?? { count: 0, values: [] };
+      current.count += 1;
+      current.values.push(...respondentValues);
+      groupSummaries.set(group, current);
+    }
+  }
+
+  const subscales = [...factors.entries()].map(([factor, summary]) => ({
+    id: factor,
+    label: factor,
+    itemCount: summary.itemMappings.length,
+    method,
+    respondentCount: summary.rows.length,
+    score: summarizeSubscaleScore(summary, method),
+    alpha: summary.itemMappings.length >= 2 ? cronbachAlpha(summary.rows) : null
+  }));
+
+  const missingItems = [...itemMissing.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  return {
+    fileName: state.upload.fileName ?? "uploaded data",
+    respondentCount: state.upload.rows.length,
+    headers: state.upload.headers,
+    itemCount: selected.length,
+    scale,
+    method,
+    groupColumn,
+    groupSummaries: [...groupSummaries.entries()].map(([group, summary]) => ({
+      group,
+      count: summary.count,
+      mean: summary.values.length > 0 ? round(mean(summary.values)) : null
+    })),
+    missingCellCount,
+    invalidCellCount,
+    totalCells,
+    missingRate: totalCells === 0 ? 0 : missingCellCount / totalCells,
+    overallMean: allValues.length > 0 ? round(mean(allValues)) : null,
+    overallAlpha: selected.length >= 2 ? cronbachAlpha(allCompleteRows) : null,
+    alphaRows: allCompleteRows.length,
+    subscales,
+    missingItems
+  };
+}
+
+function renderUploadBrief(analysis) {
+  const headline = analysis.invalidCellCount > 0
+    ? "범위 밖 응답을 먼저 확인하세요"
+    : analysis.missingRate > 0.15
+      ? "결측 패턴 검토가 필요합니다"
+      : "브라우저 안에서 코호트 요약을 계산했습니다";
+  const summary = `${analysis.respondentCount}명, ${analysis.itemCount}개 문항을 ${analysis.scale.min}-${analysis.scale.max} 범위로 채점했습니다. 전체 평균은 ${formatNullableNumber(analysis.overallMean)}입니다.`;
+
+  return `
+    <section class="report-hero data-hero">
+      <div class="report-hero-main">
+        <p class="eyebrow">Browser-Only Data Report</p>
+        <h3>${escapeHtml(headline)}</h3>
+        <p>${escapeHtml(summary)}</p>
+      </div>
+      <div class="report-hero-aside">
+        <span>Missing</span>
+        <strong>${formatPercent(analysis.missingRate)}</strong>
+        ${renderBar(100 - Math.round(analysis.missingRate * 100))}
+        <small>원자료는 서버로 전송되지 않았습니다.</small>
+      </div>
+    </section>
+  `;
+}
+
+function renderUploadActions(analysis) {
+  const actions = [
+    {
+      title: "문항 매핑 검토",
+      meta: `${analysis.itemCount} selected items`,
+      body: "자동 선택된 문항 컬럼이 실제 문항인지, 역채점 표시가 맞는지 확인하세요."
+    },
+    {
+      title: "결측·범위 점검",
+      meta: `${analysis.missingCellCount} missing · ${analysis.invalidCellCount} invalid`,
+      body: "범위 밖 값은 채점과 신뢰도 계산에서 제외했습니다."
+    },
+    {
+      title: "다음 분석 준비",
+      meta: "R templates",
+      body: "이 요약은 스크리닝 단계입니다. CFA/IRT/DIF는 생성된 R 템플릿과 실제 원자료로 실행하세요."
+    }
+  ];
+  return renderActionRail("Dataset Workflow", actions);
+}
+
+function renderUploadWarnings(analysis) {
+  const warnings = [];
+  if (analysis.invalidCellCount > 0) {
+    warnings.push(`${analysis.invalidCellCount}개 셀이 응답 범위 밖이라 제외되었습니다.`);
+  }
+  if (analysis.missingRate > 0.15) {
+    warnings.push(`결측률이 ${formatPercent(analysis.missingRate)}입니다. 문항별/집단별 결측 패턴을 확인하세요.`);
+  }
+  if (analysis.alphaRows < 2) {
+    warnings.push("Cronbach alpha를 계산할 완전응답 행이 부족합니다.");
+  }
+  if (analysis.itemCount < 2) {
+    warnings.push("신뢰도 계산에는 최소 2개 문항이 필요합니다.");
+  }
+
+  return `
+    <section class="result-section warning-surface">
+      <h3>데이터 검토 포인트</h3>
+      ${warnings.length === 0
+        ? `<p class="soft-copy">즉시 차단할 데이터 품질 경고는 없습니다. 그래도 실제 분석 전 원자료를 확인하세요.</p>`
+        : `<ul>${warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>`}
+    </section>
+  `;
+}
+
+function renderUploadSubscales(analysis) {
+  return `
+    <section class="result-section">
+      <h3>하위척도 요약</h3>
+      <div class="subscale-list">
+        ${analysis.subscales.map((subscale) => `
+          <article class="subscale-row">
+            <div>
+              <strong>${escapeHtml(subscale.label)}</strong>
+              <span>${subscale.itemCount} items · ${subscale.respondentCount} complete rows</span>
+            </div>
+            <div class="subscale-score">
+              <b>${formatNullableNumber(subscale.score)}</b>
+              <em class="band-mid">α ${formatNullableNumber(subscale.alpha)}</em>
+            </div>
+            ${renderBar(uploadSubscalePercent(subscale, analysis.scale))}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderUploadGroups(analysis) {
+  if (!analysis.groupColumn) {
+    return `
+      <section class="result-section">
+        <h3>집단 요약</h3>
+        <p class="soft-copy">집단 변수를 선택하지 않았습니다. 집단 비교가 필요하면 매핑 화면에서 집단 변수를 선택하세요.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="result-section">
+      <h3>집단 요약</h3>
+      <div class="data-table">
+        <div class="data-table-row head">
+          <span>집단</span>
+          <span>N</span>
+          <span>평균</span>
+        </div>
+        ${analysis.groupSummaries.map((group) => `
+          <div class="data-table-row">
+            <span>${escapeHtml(group.group)}</span>
+            <span>${group.count}</span>
+            <span>${formatNullableNumber(group.mean)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderUploadPreview(analysis) {
+  return `
+    <section class="result-section">
+      <h3>문항 결측 상위</h3>
+      <div class="chip-list">
+        ${analysis.missingItems.map(([column, count]) => `
+          <span class="info-chip">${escapeHtml(column)} · ${count}</span>
+        `).join("") || `<span class="info-chip">결측 없음</span>`}
+      </div>
+    </section>
+  `;
+}
+
 function renderScoreBrief(result, validity, min, max) {
   const projection = result.interpretationInput;
   const highest = projection.scores.highest[0];
@@ -872,9 +1674,85 @@ function formatNumber(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function formatNullableNumber(value) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "N/A";
+  }
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatPercent(value) {
+  return `${Math.round((Number(value) || 0) * 100)}%`;
+}
+
+function uploadSubscalePercent(subscale, scale) {
+  if (subscale.method === "sum") {
+    return scorePercent(subscale.score, scale.min * subscale.itemCount, scale.max * subscale.itemCount);
+  }
+  return scorePercent(subscale.score, scale.min, scale.max);
+}
+
 function numberOrNull(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function selectedUploadMappings() {
+  return state.upload.mappings
+    .filter((mapping) => mapping.include)
+    .map((mapping) => ({
+      ...mapping,
+      factor: mapping.factor || "total"
+    }));
+}
+
+function readUploadScale() {
+  const min = numberOrNull(nodes.uploadScaleMinInput.value);
+  const max = numberOrNull(nodes.uploadScaleMaxInput.value);
+  if (min === null || max === null || min >= max) {
+    throw new Error("응답 최솟값과 최댓값을 올바르게 입력하세요.");
+  }
+  return { min, max };
+}
+
+function parseNumericCell(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+  const normalized = String(value).trim().replace(/,/g, "");
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
+function numericValues(values) {
+  return values
+    .map(parseNumericCell)
+    .filter((value) => value !== null);
+}
+
+function summarizeScore(values, method) {
+  if (values.length === 0) {
+    return null;
+  }
+  return round(method === "sum"
+    ? values.reduce((total, value) => total + value, 0)
+    : mean(values));
+}
+
+function summarizeSubscaleScore(summary, method) {
+  if (method === "sum") {
+    const rowSums = summary.rows.map((row) => row.reduce((total, value) => total + value, 0));
+    return rowSums.length > 0 ? round(mean(rowSums)) : null;
+  }
+  return summarizeScore(summary.values, "mean");
+}
+
+function mean(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function round(value, digits = 3) {
+  return Number(value.toFixed(digits));
 }
 
 function splitList(value) {
