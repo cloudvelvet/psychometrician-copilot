@@ -1,3 +1,5 @@
 public/
 .vercel/
+.kkirikkiri/
+ui-*.png
 *.log
