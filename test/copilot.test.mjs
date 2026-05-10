@@ -123,3 +123,16 @@ test("markdown KB topics are compiled into retrievable cards", () => {
   assert.equal(hits[0].id, "kb_mantel_haenszel_dif");
   assert.match(hits[0].source.path, /psychometrics_kb\/dif\/mantel_haenszel.md/);
 });
+
+test("Korean SEM book notes are retrievable with citation metadata", () => {
+  const hits = retrieveKnowledge("문항묶음 parceling 구조방정식 단일차원성");
+
+  assert.equal(hits[0].id, "kb_sem_item_parcels");
+  assert.match(hits[0].source.citation, /김수영 \(2016\)/);
+});
+
+test("Mplus SEM book note is retrievable", () => {
+  const hits = retrieveKnowledge("Mplus syntax categorical missing estimator 구조방정식");
+
+  assert.equal(hits[0].id, "kb_mplus_sem_templates");
+});

@@ -45,6 +45,49 @@ export const MARKDOWN_KB_TOPICS = [
     ]
   },
   {
+    "id": "kb_efa_cfa_sem_workflow",
+    "title": "EFA, CFA, and SEM answer different stages of the measurement-model workflow",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/efa_cfa_sem_workflow.md"
+    },
+    "relatedAnalyses": [
+      "efa_dimensionality",
+      "cfa",
+      "ordinal_cfa"
+    ],
+    "keywords": [
+      "EFA",
+      "CFA",
+      "SEM workflow",
+      "factor extraction",
+      "factor rotation",
+      "specification",
+      "identification",
+      "estimation",
+      "exploratory factor analysis",
+      "confirmatory factor analysis",
+      "탐색적 요인분석",
+      "확인적 요인분석",
+      "요인추출",
+      "요인회전",
+      "모형설정",
+      "모형판별"
+    ],
+    "summary": "EFA is useful when the latent structure is uncertain; CFA tests a specified measurement model; SEM extends the model to structural paths among latent or observed variables. Mixing these stages without a decision trail can overstate evidence.",
+    "checks": [
+      "Use EFA for discovery and CFA for confirmation when sample size and design allow separation.",
+      "In CFA, document specification, identification, estimation, fit evaluation, and model revisions.",
+      "Do not treat an EFA-derived structure tested in the same sample as fully confirmed without caveats."
+    ],
+    "useWhen": [
+      "The user asks whether to run EFA, CFA, or SEM.",
+      "A scale-development workflow needs sequencing rather than one-off model fit."
+    ]
+  },
+  {
     "id": "kb_measurement_invariance",
     "title": "Measurement invariance should precede group score comparison",
     "source": {
@@ -124,6 +167,311 @@ export const MARKDOWN_KB_TOPICS = [
     "useWhen": [
       "The response scale has five to seven or fewer ordered categories.",
       "The user asks for CFA on Likert questionnaire data."
+    ]
+  },
+  {
+    "id": "kb_sem_data_preparation",
+    "title": "SEM data preparation should check sample size, missingness, normality, outliers, and collinearity",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_data_preparation.md"
+    },
+    "relatedAnalyses": [
+      "data_screening",
+      "cfa",
+      "ordinal_cfa",
+      "measurement_invariance"
+    ],
+    "keywords": [
+      "SEM data preparation",
+      "structural equation modeling",
+      "sample size",
+      "normality",
+      "outliers",
+      "multicollinearity",
+      "missing data",
+      "covariance matrix",
+      "구조방정식",
+      "자료 준비",
+      "표본크기",
+      "정규성",
+      "이상값",
+      "다중공선성",
+      "결측치",
+      "공분산행렬"
+    ],
+    "summary": "SEM recommendations should start with whether the observed data are suitable for the planned model. Sample size, distributional form, missing-data mechanism, outliers, multicollinearity, and whether the analysis uses raw data, covariance matrices, or summary data shape every later estimation and fit decision.",
+    "checks": [
+      "Ask for sample size, number of observed variables, missing-data pattern, and group sizes before recommending complex SEM.",
+      "Screen univariate and multivariate normality, outliers, and near-linear dependence among indicators.",
+      "Match the data input format to the planned analysis: raw data, covariance/correlation matrix, or summary statistics."
+    ],
+    "useWhen": [
+      "The user asks whether their data are ready for CFA or SEM.",
+      "A SEM model is requested but missingness, normality, or sample size is not specified."
+    ]
+  },
+  {
+    "id": "kb_sem_identification_estimation_fit",
+    "title": "SEM model evaluation depends on specification, identification, estimation, and fit diagnostics",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_identification_estimation_fit.md"
+    },
+    "relatedAnalyses": [
+      "cfa",
+      "ordinal_cfa",
+      "reliability_validity"
+    ],
+    "keywords": [
+      "SEM",
+      "model specification",
+      "identification",
+      "estimation",
+      "maximum likelihood",
+      "least squares",
+      "model fit",
+      "chi-square",
+      "CFI",
+      "TLI",
+      "RMSEA",
+      "SRMR",
+      "구조방정식",
+      "모형 설정",
+      "모형 판별",
+      "모형 추정",
+      "최대우도",
+      "최소제곱",
+      "적합도"
+    ],
+    "summary": "A SEM model should be evaluated as a sequence: specify the theoretical model, confirm identification, choose an estimator that matches the data, inspect global fit, examine local diagnostics, and interpret parameters only within that decision trail.",
+    "checks": [
+      "Confirm the model is identified before interpreting fit or parameter estimates.",
+      "Choose estimation methods according to response scale, distribution, missing data, and sample size.",
+      "Read fit indices together with residuals, standard errors, parameter plausibility, and alternative models."
+    ],
+    "useWhen": [
+      "The user asks how to judge SEM or CFA fit.",
+      "A generated model has fit indices but no identification or estimation discussion."
+    ]
+  },
+  {
+    "id": "kb_sem_item_parcels",
+    "title": "Item parceling can simplify SEM but may hide measurement problems",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_item_parcels.md"
+    },
+    "relatedAnalyses": [
+      "cfa",
+      "ordinal_cfa",
+      "reliability_validity"
+    ],
+    "keywords": [
+      "item parceling",
+      "parcels",
+      "SEM parcels",
+      "CFA parcels",
+      "latent variable indicators",
+      "unidimensionality",
+      "문항묶음",
+      "문항꾸러미",
+      "구조방정식 문항묶음",
+      "단일차원성",
+      "잠재변수 지표"
+    ],
+    "summary": "Item parcels reduce model complexity and can improve estimation stability, but they can also mask multidimensionality, local dependence, DIF, and poorly functioning items. Parceling should be justified before it is used.",
+    "checks": [
+      "Check item-level dimensionality and content coverage before forming parcels.",
+      "Explain the parceling method and why parcels are appropriate for the construct.",
+      "Avoid parceling when the goal is item-level diagnosis, DIF, or response-category evaluation."
+    ],
+    "useWhen": [
+      "The user proposes item parcels to improve CFA or SEM fit.",
+      "A model has many items relative to sample size and parceling is being considered."
+    ]
+  },
+  {
+    "id": "kb_sem_latent_growth_sample_size",
+    "title": "Latent growth and SEM sample-size planning require model-specific assumptions",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_latent_growth_sample_size.md"
+    },
+    "relatedAnalyses": [
+      "cfa",
+      "reliability_validity",
+      "data_screening"
+    ],
+    "keywords": [
+      "latent growth model",
+      "latent growth",
+      "LGM",
+      "longitudinal SEM",
+      "SEM sample size",
+      "sample size planning",
+      "sample size",
+      "power",
+      "RMSEA",
+      "Satorra Saris",
+      "Muthen Muthen",
+      "MacCallum Browne Sugawara",
+      "잠재성장모형",
+      "잠재성장",
+      "종단 구조방정식",
+      "표본크기",
+      "표본크기 결정",
+      "검정력",
+      "모형복잡도"
+    ],
+    "summary": "SEM sample-size planning depends on model complexity, estimator, missing data, distribution, group count, and desired power. Latent growth models add repeated-measure structure, growth-factor interpretation, and longitudinal missing-data concerns.",
+    "checks": [
+      "Avoid one-size-fits-all SEM sample-size rules detached from model degrees of freedom and estimator.",
+      "For latent growth, specify time scores, growth factors, residual structure, and missing-data handling.",
+      "Consider simulation or RMSEA/power-based planning for complex SEM rather than relying only on N-to-parameter ratios."
+    ],
+    "useWhen": [
+      "The user asks whether sample size is enough for SEM or longitudinal growth modeling.",
+      "The model includes repeated measures, growth factors, multiple groups, or many parameters."
+    ]
+  },
+  {
+    "id": "kb_sem_measurement_invariance_multigroup",
+    "title": "Multigroup SEM and MIMIC models can test measurement invariance and group differences",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_measurement_invariance_multigroup.md"
+    },
+    "relatedAnalyses": [
+      "measurement_invariance",
+      "dif_screening",
+      "cfa",
+      "ordinal_cfa"
+    ],
+    "keywords": [
+      "multigroup SEM",
+      "measurement invariance",
+      "MIMIC model",
+      "configural invariance",
+      "metric invariance",
+      "scalar invariance",
+      "structural coefficient equality",
+      "group difference",
+      "다집단 구조방정식",
+      "측정불변성",
+      "MIMIC 모형",
+      "형태동일성",
+      "측정단위동일성",
+      "절편동일성",
+      "구조계수 동일성",
+      "집단차이"
+    ],
+    "summary": "Group comparisons in SEM should distinguish measurement invariance from structural group differences. Multigroup CFA/SEM checks equality constraints across groups, while MIMIC models can screen direct effects of covariates on indicators or factors.",
+    "checks": [
+      "Test measurement invariance before comparing latent means or structural paths.",
+      "Separate measurement-parameter equality from structural-coefficient equality.",
+      "Use MIMIC direct effects as item/functioning signals that need substantive review."
+    ],
+    "useWhen": [
+      "The user wants to compare groups in CFA or SEM.",
+      "The model includes group variables, covariates, MIMIC paths, or suspected measurement bias."
+    ]
+  },
+  {
+    "id": "kb_sem_mediation_moderation",
+    "title": "SEM mediation and moderation require explicit indirect, interaction, and model-comparison logic",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_mediation_moderation.md"
+    },
+    "relatedAnalyses": [
+      "cfa",
+      "reliability_validity"
+    ],
+    "keywords": [
+      "SEM mediation",
+      "SEM moderation",
+      "indirect effect",
+      "bootstrap",
+      "moderated mediation",
+      "MIMIC",
+      "latent interaction",
+      "nested model",
+      "nonnested model",
+      "매개효과",
+      "조절효과",
+      "부트스트래핑",
+      "조절된 매개효과",
+      "잠재변수 상호작용",
+      "내재모형",
+      "비내재모형"
+    ],
+    "summary": "Mediation, moderation, and moderated mediation in SEM are not just extra paths. The analysis needs a defensible causal ordering, indirect-effect testing, interaction specification, and model comparison strategy.",
+    "checks": [
+      "Use bootstrap confidence intervals or another explicit method for indirect effects.",
+      "Distinguish observed-variable interaction, latent interaction, MIMIC, and multigroup approaches.",
+      "Compare nested and nonnested models with methods appropriate to the relationship between models."
+    ],
+    "useWhen": [
+      "The user asks whether a variable mediates or moderates an SEM relation.",
+      "A model includes indirect effects, latent interactions, or group-conditional effects."
+    ]
+  },
+  {
+    "id": "kb_sem_non_normal_ordinal_reliability",
+    "title": "SEM with nonnormal, binary, ordinal, or reliability-focused indicators needs estimator-aware interpretation",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/cfa_sem/sem_non_normal_ordinal_reliability.md"
+    },
+    "relatedAnalyses": [
+      "ordinal_cfa",
+      "cfa",
+      "reliability_validity",
+      "data_screening"
+    ],
+    "keywords": [
+      "nonnormal indicators",
+      "ordinal indicators",
+      "binary indicators",
+      "categorical CFA",
+      "robust estimator",
+      "WLSMV",
+      "higher-order factor",
+      "SEM reliability",
+      "discriminant validity",
+      "비정규 지표변수",
+      "이분형 자료",
+      "순위형 자료",
+      "범주형 CFA",
+      "강건추정",
+      "고차 요인분석",
+      "측정모형 신뢰도",
+      "차별타당성"
+    ],
+    "summary": "When indicators are nonnormal, binary, ordinal, or used to support reliability/validity claims, SEM output must be interpreted through estimator choice, threshold/category diagnostics, higher-order structure, and discriminant-validity evidence.",
+    "checks": [
+      "Match estimator and link functions to binary or ordinal indicators rather than defaulting to continuous ML.",
+      "Examine whether higher-order factor models are theoretically justified and empirically identified.",
+      "Report SEM-based reliability and discriminant-validity evidence with assumptions, not as automatic pass/fail rules."
+    ],
+    "useWhen": [
+      "The user has Likert, binary, or nonnormal indicators in SEM.",
+      "The user asks for reliability, higher-order factors, or discriminant validity from CFA/SEM."
     ]
   },
   {
@@ -391,6 +739,49 @@ export const MARKDOWN_KB_TOPICS = [
     "useWhen": [
       "The consultation generates IRT R code.",
       "The user asks for mirt-based item diagnostics."
+    ]
+  },
+  {
+    "id": "kb_mplus_sem_templates",
+    "title": "Mplus SEM templates require explicit variable lists, estimator choices, and missing-data rules",
+    "source": {
+      "citation": "김수영 (2016). 구조방정식 모형의 기본과 확장: Mplus 예제와 함께. 학지사.",
+      "type": "book_toc_guided_summary",
+      "note": "Paraphrased SEM/Mplus knowledge note guided by the book title and table of contents; no source text reproduction.",
+      "path": "psychometrics_kb/r_code/mplus_sem_templates.md"
+    },
+    "relatedAnalyses": [
+      "cfa",
+      "ordinal_cfa",
+      "measurement_invariance",
+      "irt_polytomous"
+    ],
+    "keywords": [
+      "Mplus",
+      "Mplus input",
+      "Mplus syntax",
+      "SEM code",
+      "CFA code",
+      "estimator",
+      "categorical",
+      "missing",
+      "grouping",
+      "구조방정식 Mplus",
+      "Mplus 입력파일",
+      "Mplus 문법",
+      "분석 코드",
+      "범주형 지표",
+      "결측 처리"
+    ],
+    "summary": "Mplus examples are helpful for SEM, CFA, mediation, invariance, categorical indicators, and growth models, but generated syntax must make the data file, variable names, categorical declarations, missing codes, estimator, grouping, and model block explicit.",
+    "checks": [
+      "Replace placeholder variable names and confirm the data file matches the Mplus `NAMES`, `USEVARIABLES`, and missing-value declarations.",
+      "Use `CATEGORICAL`, grouping, and estimator options only when they match the item format and design.",
+      "Keep generated syntax as a reviewed template; do not treat it as proof that the model is appropriate."
+    ],
+    "useWhen": [
+      "The user asks for Mplus examples or syntax.",
+      "The analysis plan includes CFA, SEM, invariance, mediation, categorical indicators, or latent growth models in Mplus."
     ]
   },
   {
