@@ -65,23 +65,33 @@ npm.cmd run assess -- --no-color
 
 The default `assess` output is a readable terminal report with boxes, score bars, and color when the terminal supports it. Use `-- --json` only when you want the raw AI projection DTO, and `-- --no-color` when plain output is easier to copy.
 
-## Web Preview and Vercel
+## Web Preview
 
-This repository includes a static browser app for Vercel.
+This repository includes a static browser app.
 
 ```powershell
 cd C:\ai\psychometric-engine
 npm.cmd run web
 ```
 
-Open `http://localhost:4173` to test the browser UI. For Vercel, import the GitHub repository and deploy it as a static project. The app entrypoint is `index.html`.
+Open `http://localhost:4173` to test the browser UI.
 
-Vercel uses `vercel.json` to run `npm run build` and serve the generated `public/` directory. If Vercel shows `404: NOT_FOUND`, check the project settings:
+## GitHub Pages
 
-- Framework Preset: `Other`
-- Root Directory: the folder that contains this `package.json`
-- Build Command: `npm run build`
-- Output Directory: `public`
+GitHub Pages deployment is configured through `.github/workflows/pages.yml`.
+
+1. Push this project to a GitHub repository.
+2. In GitHub, open `Settings -> Pages`.
+3. Set `Source` to `GitHub Actions`.
+4. Push to the `main` branch, or run the `Deploy GitHub Pages` workflow manually.
+
+The workflow runs `npm run build`, uploads `public/`, and publishes the static app. The app uses relative asset paths so it works under repository URLs such as:
+
+```text
+https://username.github.io/repository-name/
+```
+
+If your default branch is not `main`, update `.github/workflows/pages.yml`.
 
 ## Minimal Usage
 
