@@ -301,6 +301,9 @@ async function copyReportSection(button, selector) {
 function scrollToReportSection(selector) {
   const target = nodes.resultPanel.querySelector(selector)?.closest(".result-section") ??
     nodes.resultPanel.querySelector(selector);
+  if (target instanceof HTMLDetailsElement) {
+    target.open = true;
+  }
   target?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -840,6 +843,7 @@ function renderConsultation() {
         { label: "패킷 보기", action: "jump_to_packet" },
         { label: "패킷 복사", action: "copy_packet" },
         { label: "근거 보기", action: "jump_to_evidence" },
+        ...(warnings.length > 0 ? [{ label: `경고 ${warnings.length}`, action: "review_flags" }] : []),
         { label: "PDF 저장", action: "export_report" },
         { label: "입력 수정", action: "edit_inputs" }
       ])}
@@ -1042,6 +1046,8 @@ function renderConsultationDecisionBoard(consultation) {
 }
 
 function renderConsultationPipeline(analyses) {
+  const visibleAnalyses = analyses.slice(0, 4);
+  const hiddenCount = analyses.length - visibleAnalyses.length;
   if (analyses.length === 0) {
     return `
       <section class="result-section analysis-pipeline">
@@ -1058,7 +1064,7 @@ function renderConsultationPipeline(analyses) {
         <span class="count-badge">${analyses.length}</span>
       </div>
       <div class="pipeline-list">
-        ${analyses.map((analysis, index) => `
+        ${visibleAnalyses.map((analysis, index) => `
           <article class="pipeline-item ${escapeHtml(analysis.priority)}">
             <div class="pipeline-index">${String(index + 1).padStart(2, "0")}</div>
             <div>
@@ -1066,12 +1072,12 @@ function renderConsultationPipeline(analyses) {
                 <strong>${escapeHtml(analysis.title)}</strong>
                 <span>${escapeHtml(analysis.priority)} · ${escapeHtml(analysis.confidence)}</span>
               </div>
-              <p>${escapeHtml(analysis.rationale)}</p>
               <small>${escapeHtml(analysis.output)}</small>
             </div>
           </article>
         `).join("")}
       </div>
+      ${hiddenCount > 0 ? `<p class="compact-note">나머지 ${hiddenCount}개 분석 후보는 아래 연구 패킷에서 확인하세요.</p>` : ""}
     </section>
   `;
 }
@@ -1177,11 +1183,20 @@ function renderStudyPacket(consultation) {
   const hiddenMappingCount = packet.itemFactorMap.length - mappingRows.length;
 
   return `
-    <section class="study-packet result-section result-annex" aria-labelledby="studyPacketTitle">
-      <div class="packet-header">
+    <details class="study-packet result-section result-annex" aria-labelledby="studyPacketTitle">
+      <summary class="annex-summary">
         <div>
           <p class="eyebrow">Annex · Study Packet Builder</p>
           <h3 id="studyPacketTitle">연구 패킷</h3>
+          <span>설계 요약, 변수 manifest, 매핑표, 체크리스트, R 템플릿</span>
+        </div>
+        <strong>${packet.completion}%</strong>
+      </summary>
+      <div class="annex-body">
+        <div class="packet-header">
+        <div>
+          <p class="eyebrow">Study Packet</p>
+          <h3>연구 패킷 본문</h3>
           <p>상담 입력값을 실제 연구자가 확인할 작업 단위로 재구성했습니다. 이 패킷은 분석을 실행하지 않고, 실행 전 필요한 설계·자료·보고 항목을 정리합니다.</p>
         </div>
         <div class="packet-status">
@@ -1311,7 +1326,8 @@ function renderStudyPacket(consultation) {
           ${renderPacketChecklist(packet.boundaryChecklist)}
         </article>
       </div>
-    </section>
+      </div>
+    </details>
   `;
 }
 
@@ -1401,12 +1417,16 @@ function renderAnalysisRoadmap(analyses) {
 
 function renderEvidenceTopics(evidence) {
   return `
-    <section class="result-section result-annex evidence-annex">
-      <div class="section-title-row">
-        <h3>근거 토픽</h3>
-        <span class="count-badge">${evidence.length}</span>
-      </div>
-      <div class="evidence-grid">
+    <details class="result-section result-annex evidence-annex">
+      <summary class="annex-summary">
+        <div>
+          <p class="eyebrow">Annex · Evidence</p>
+          <h3>근거 토픽</h3>
+          <span>추천 분석을 뒷받침하는 로컬 지식 카드</span>
+        </div>
+        <strong>${evidence.length}</strong>
+      </summary>
+      <div class="annex-body evidence-grid">
         ${evidence.slice(0, 6).map((topic) => `
           <article class="evidence-card">
             <strong>${escapeHtml(topic.title)}</strong>
@@ -1418,7 +1438,7 @@ function renderEvidenceTopics(evidence) {
           </article>
         `).join("")}
       </div>
-    </section>
+    </details>
   `;
 }
 
@@ -1452,12 +1472,16 @@ function renderCodeTemplates(templates) {
 
 function renderWarnings(warnings) {
   return `
-    <section class="result-section result-annex warning-annex">
-      <div class="section-title-row">
-        <h3>비판자 경고</h3>
-        <span class="count-badge">${warnings.length}</span>
-      </div>
-      <div class="warning-list">
+    <details class="result-section result-annex warning-annex">
+      <summary class="annex-summary">
+        <div>
+          <p class="eyebrow">Annex · Critic</p>
+          <h3>비판자 경고</h3>
+          <span>차단 조건과 잠정 해석 경고</span>
+        </div>
+        <strong>${warnings.length}</strong>
+      </summary>
+      <div class="annex-body warning-list">
         ${warnings.length === 0
           ? `<p class="soft-copy">차단 경고는 없습니다. 실제 분석 전 전문가 검토는 유지하세요.</p>`
           : warnings.map((warning) => `
@@ -1467,7 +1491,7 @@ function renderWarnings(warnings) {
             </div>
           `).join("")}
       </div>
-    </section>
+    </details>
   `;
 }
 
