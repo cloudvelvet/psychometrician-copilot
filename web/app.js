@@ -1074,10 +1074,8 @@ function renderUploadReport() {
     return;
   }
 
-  const statusClass = analysis.invalidCellCount > 0 || analysis.missingRate > 0.15
-    ? "warning"
-    : "success";
-  const statusLabel = statusClass === "warning" ? "검토 필요" : "요약 가능";
+  analysis.readiness = buildDatasetReadiness(analysis);
+  const statusClass = readinessStatusClass(analysis.readiness.status);
 
   nodes.resultPanel.innerHTML = `
     <article class="result-stack">
@@ -1086,7 +1084,7 @@ function renderUploadReport() {
           <p class="eyebrow">Dataset Report</p>
           <h2>${escapeHtml(analysis.fileName)}</h2>
         </div>
-        <span class="status-pill ${statusClass}">${statusLabel}</span>
+        <span class="status-pill ${statusClass}">${escapeHtml(analysis.readiness.label)}</span>
       </header>
 
       ${renderReportToolbar([
@@ -1104,6 +1102,7 @@ function renderUploadReport() {
       </section>
 
       ${renderUploadBrief(analysis)}
+      ${renderDatasetReadinessAgent(analysis.readiness)}
       ${renderUploadActions(analysis)}
       ${renderUploadWarnings(analysis)}
       ${renderUploadSubscales(analysis)}
@@ -1259,6 +1258,387 @@ function renderUploadBrief(analysis) {
         <small>원자료는 서버로 전송되지 않았습니다.</small>
       </div>
     </section>
+  `;
+}
+
+function buildDatasetReadiness(analysis) {
+  const issues = [];
+  const methodHints = [];
+  let score = 100;
+  const invalidRate = analysis.totalCells === 0 ? 0 : analysis.invalidCellCount / analysis.totalCells;
+  const alphaCoverage = analysis.respondentCount === 0 ? 0 : analysis.alphaRows / analysis.respondentCount;
+  const expectedFactors = analysis.subscales.length > 1
+    ? analysis.subscales.length
+    : numberOrNull(nodes.expectedFactorsInput.value);
+  const factorScreeningReadyN = Math.max(200, analysis.itemCount * 10);
+  const factorScreeningCleanupN = Math.max(100, analysis.itemCount * 5);
+
+  const addIssue = ({ severity, title, body, action, penalty }) => {
+    issues.push({ severity, title, body, action });
+    score -= penalty;
+  };
+
+  if (invalidRate > 0.01) {
+    addIssue({
+      severity: "blocker",
+      title: "범위 밖 응답",
+      body: `${analysis.invalidCellCount}개 셀이 ${analysis.scale.min}-${analysis.scale.max} 범위를 벗어났습니다.`,
+      action: "원자료 코딩, 결측값 기호, 역채점 전 원점수 범위를 먼저 확인하세요.",
+      penalty: 24
+    });
+  } else if (analysis.invalidCellCount > 0) {
+    addIssue({
+      severity: "caution",
+      title: "범위 밖 응답 소수",
+      body: `${analysis.invalidCellCount}개 셀이 응답 범위 밖입니다.`,
+      action: "해당 행과 문항을 확인하고 제외 기준을 기록하세요.",
+      penalty: 10
+    });
+  }
+
+  if (analysis.missingRate > 0.15) {
+    addIssue({
+      severity: "blocker",
+      title: "높은 결측률",
+      body: `선택 문항 기준 결측률이 ${formatPercent(analysis.missingRate)}입니다.`,
+      action: "문항별 결측 원인과 삭제/대체/FIML 같은 처리 방침을 먼저 정하세요.",
+      penalty: 28
+    });
+  } else if (analysis.missingRate > 0.05) {
+    addIssue({
+      severity: "caution",
+      title: "결측 검토 필요",
+      body: `선택 문항 기준 결측률이 ${formatPercent(analysis.missingRate)}입니다.`,
+      action: "결측이 특정 문항이나 집단에 몰려 있는지 확인하세요.",
+      penalty: 14
+    });
+  }
+
+  if (analysis.respondentCount < 30) {
+    addIssue({
+      severity: "blocker",
+      title: "표본 부족",
+      body: `${analysis.respondentCount}명으로 코호트 수준 심리측정 요약이 매우 제한됩니다.`,
+      action: "문항 스크리닝 수준으로만 보고하고 표본을 보강하세요.",
+      penalty: 28
+    });
+  } else if (analysis.respondentCount < 100) {
+    addIssue({
+      severity: "caution",
+      title: "작은 표본",
+      body: `${analysis.respondentCount}명으로 복잡한 CFA/IRT/집단 비교에는 불안정할 수 있습니다.`,
+      action: "초기 스크리닝과 신뢰도 확인 중심으로 보고하고, 모형 기반 결론은 보류하세요.",
+      penalty: 18
+    });
+  }
+
+  if (analysis.itemCount < 2) {
+    addIssue({
+      severity: "blocker",
+      title: "문항 수 부족",
+      body: `${analysis.itemCount}개 문항만 선택되어 신뢰도와 내적구조 검토가 제한됩니다.`,
+      action: "실제 척도 문항 컬럼이 모두 선택되었는지 매핑을 확인하세요.",
+      penalty: 20
+    });
+  } else if (analysis.itemCount < 3) {
+    addIssue({
+      severity: "caution",
+      title: "문항 수 제한",
+      body: `${analysis.itemCount}개 문항으로 요인 구조 검토가 제한됩니다.`,
+      action: "하위척도별 문항 수가 충분한지 매핑을 확인하세요.",
+      penalty: 10
+    });
+  }
+
+  if (analysis.itemCount >= 2 && analysis.alphaRows < 2) {
+    addIssue({
+      severity: "blocker",
+      title: "신뢰도 계산 불가",
+      body: "완전응답 행이 2개 미만이라 Cronbach alpha가 계산되지 않습니다.",
+      action: "결측 처리 전후 신뢰도 결과를 분리해서 확인하세요.",
+      penalty: 18
+    });
+  } else if (analysis.itemCount >= 2 && alphaCoverage < 0.7) {
+    addIssue({
+      severity: "caution",
+      title: "완전응답 행 부족",
+      body: `alpha 계산에 사용된 완전응답 행이 전체의 ${formatPercent(alphaCoverage)}입니다.`,
+      action: "결측 처리 전후의 신뢰도 결과를 분리해 보고하세요.",
+      penalty: 10
+    });
+  }
+
+  const weakSubscales = analysis.subscales.filter((subscale) => subscale.itemCount < 3);
+  if (weakSubscales.length > 0) {
+    addIssue({
+      severity: "caution",
+      title: "하위척도 문항 수 제한",
+      body: `${weakSubscales.map((subscale) => subscale.label).join(", ")} 요인은 문항이 3개 미만입니다.`,
+      action: "요인명 자동 추론이 맞는지 확인하고, 필요하면 문항-요인 매핑을 수정하세요.",
+      penalty: 10
+    });
+  }
+
+  if (analysis.groupColumn && analysis.groupSummaries.length > 0) {
+    const smallestGroup = [...analysis.groupSummaries].sort((a, b) => a.count - b.count)[0];
+    if (smallestGroup.count < 20) {
+      addIssue({
+        severity: "blocker",
+        title: "집단 비교 표본 부족",
+        body: `${smallestGroup.group} 집단이 ${smallestGroup.count}명입니다.`,
+        action: "집단 비교, 측정동일성, DIF 해석을 보류하고 표본을 보강하세요.",
+        penalty: 20
+      });
+    } else if (smallestGroup.count < 50) {
+      addIssue({
+        severity: "caution",
+        title: "작은 집단 크기",
+        body: `${smallestGroup.group} 집단이 ${smallestGroup.count}명입니다.`,
+        action: "측정동일성이나 DIF는 집단별 표본 수를 늘리거나 탐색적 스크리닝으로 낮춰 해석하세요.",
+        penalty: 12
+      });
+    }
+  }
+
+  const highMissingItems = analysis.missingItems
+    .filter(([, count]) => count / analysis.respondentCount >= 0.15)
+    .map(([column]) => column);
+  if (highMissingItems.length > 0) {
+    addIssue({
+      severity: "caution",
+      title: "문항별 결측 집중",
+      body: `${highMissingItems.slice(0, 3).join(", ")} 문항의 결측률이 높습니다.`,
+      action: "문항 표시 오류, 분기문항, 응답자 피로, 역문항 이해 문제를 점검하세요.",
+      penalty: 10
+    });
+  }
+
+  methodHints.push(methodHint({
+    title: "Data screening",
+    status: issues.some((issue) => issue.severity === "blocker") ? "needs_work" : "ready",
+    body: issues.length > 0
+      ? "경고를 정리한 뒤 분포와 범주 빈도를 확인하세요."
+      : "결측과 범위 검토 기준으로는 다음 스크리닝으로 넘어갈 수 있습니다."
+  }));
+
+  methodHints.push(methodHint({
+    title: "Reliability",
+    status: analysis.overallAlpha === null || alphaCoverage < 0.7 ? "needs_work" : "ready",
+    body: analysis.overallAlpha === null
+      ? "완전응답 행 또는 문항 수가 부족해 alpha가 계산되지 않았습니다."
+      : `전체 alpha는 ${formatNullableNumber(analysis.overallAlpha)}이고 완전응답 커버리지는 ${formatPercent(alphaCoverage)}입니다. 단일 컷오프가 아니라 척도 목적과 함께 해석하세요.`
+  }));
+
+  const factorStatus = analysis.respondentCount >= factorScreeningReadyN && expectedFactors
+    ? "candidate"
+    : analysis.respondentCount >= factorScreeningCleanupN ? "needs_work" : "later";
+  methodHints.push(methodHint({
+    title: "Factor screening",
+    status: factorStatus,
+    body: factorStatus === "candidate"
+      ? `N이 ${factorScreeningReadyN} 기준을 넘고 예상 요인 수가 입력되어 구조 검토 후보입니다.`
+      : expectedFactors
+        ? `N이 ${factorScreeningReadyN} 권장 기준보다 작습니다. 탐색적 스크리닝 또는 표본 보강을 우선하세요.`
+        : "예상 요인 수가 입력되지 않았습니다. 요인 가설을 먼저 고정하세요."
+  }));
+
+  methodHints.push(methodHint({
+    title: "IRT / DIF",
+    status: analysis.respondentCount >= 300 && analysis.itemCount >= 5 && analysis.missingRate <= 0.05 ? "candidate" : "later",
+    body: analysis.respondentCount >= 300 && analysis.itemCount >= 5 && analysis.missingRate <= 0.05
+      ? "차원성, 국소독립성, 집단 변수 검토 뒤 IRT/DIF 민감도 분석 후보입니다."
+      : "현재는 신뢰도와 구조 스크리닝이 먼저입니다."
+  }));
+
+  if (analysis.groupColumn) {
+    const allGroupsReady = analysis.groupSummaries.every((group) => group.count >= 50);
+    const anyGroupTiny = analysis.groupSummaries.some((group) => group.count < 20);
+    methodHints.push(methodHint({
+      title: "Group comparison",
+      status: allGroupsReady ? "candidate" : anyGroupTiny ? "later" : "needs_work",
+      body: allGroupsReady
+        ? "집단별 표본 수는 1차 스크리닝 기준을 넘습니다. 기저 CFA 후 측정동일성을 검토하세요."
+        : anyGroupTiny
+          ? "20명 미만 집단이 있어 집단 비교 해석은 보류하는 편이 안전합니다."
+          : "20-49명 집단이 있어 집단 비교는 탐색적 스크리닝으로 낮춰 해석하세요."
+    }));
+  }
+
+  const nextSteps = buildReadinessNextSteps({ analysis, issues, methodHints });
+  const blockers = issues.filter((issue) => issue.severity === "blocker");
+  const cautions = issues.filter((issue) => issue.severity === "caution");
+  const clampedScore = Math.max(0, Math.min(100, score));
+
+  return {
+    score: clampedScore,
+    status: blockers.length > 0 ? "not_ready" : cautions.length > 0 ? "cleanup" : "ready",
+    label: blockers.length > 0 ? "Not ready" : cautions.length > 0 ? "Needs cleanup" : "Ready",
+    summary: blockers.length > 0
+      ? "분석을 진행하기 전에 데이터 코딩과 결측 조건을 먼저 정리해야 합니다."
+      : cautions.length > 0
+        ? "큰 차단 조건은 없지만, 리포트 전 몇 가지 설계 판단이 필요합니다."
+        : "현재 업로드 요약만 보면 다음 스크리닝 단계로 넘어갈 수 있습니다.",
+    issues,
+    nextSteps,
+    methodHints,
+    boundaries: [
+      "이 판단은 업로드된 요약 통계와 매핑 정보만 사용합니다.",
+      "CFA, IRT, DIF, 측정동일성은 아직 실행되지 않았습니다.",
+      "LLM이나 상담 레이어가 점수나 alpha를 다시 계산하지 않습니다."
+    ]
+  };
+}
+
+function methodHint({ title, status, body }) {
+  const labels = {
+    ready: "ready",
+    candidate: "candidate",
+    needs_work: "needs work",
+    later: "later"
+  };
+  return {
+    title,
+    status,
+    label: labels[status] ?? status,
+    body
+  };
+}
+
+function readinessStatusClass(status) {
+  if (status === "not_ready") {
+    return "danger";
+  }
+  if (status === "cleanup") {
+    return "warning";
+  }
+  return "success";
+}
+
+function buildReadinessNextSteps({ analysis, issues, methodHints }) {
+  const steps = [];
+  const firstBlocker = issues.find((issue) => issue.severity === "blocker");
+  const firstCaution = issues.find((issue) => issue.severity === "caution");
+
+  if (firstBlocker) {
+    steps.push({
+      title: firstBlocker.title,
+      body: firstBlocker.action
+    });
+  }
+  if (firstCaution) {
+    steps.push({
+      title: firstCaution.title,
+      body: firstCaution.action
+    });
+  }
+  if (analysis.groupColumn) {
+    steps.push({
+      title: "집단 비교 전제 확인",
+      body: "집단별 N, 결측률, 문항 분포를 나눠 보고 측정동일성/DIF 여부를 결정하세요."
+    });
+  }
+
+  const nextMethod = methodHints.find((hint) => hint.status === "candidate" || hint.status === "ready");
+  steps.push({
+    title: nextMethod?.title ?? "분석 계획 고정",
+    body: nextMethod?.body ?? "문항-요인 매핑과 결측 처리 방침을 확정한 뒤 R 코드 템플릿으로 넘어가세요."
+  });
+
+  steps.push({
+    title: "보고 경계 작성",
+    body: "alpha나 평균을 단일 합격 기준으로 쓰지 말고, 구성개념과 점수 사용 목적에 연결해서 보고하세요."
+  });
+
+  return uniqueSteps(steps).slice(0, 3);
+}
+
+function uniqueSteps(steps) {
+  const seen = new Set();
+  return steps.filter((step) => {
+    if (seen.has(step.title)) {
+      return false;
+    }
+    seen.add(step.title);
+    return true;
+  });
+}
+
+function renderDatasetReadinessAgent(readiness) {
+  return `
+    <section class="agent-panel">
+      <div class="agent-panel-header">
+        <div>
+          <p class="eyebrow">Dataset Readiness Agent</p>
+          <h3>${escapeHtml(readiness.label)}</h3>
+          <p>${escapeHtml(readiness.summary)}</p>
+        </div>
+        <div class="agent-score ${readiness.status}">
+          <span>Readiness</span>
+          <strong>${readiness.score}</strong>
+          ${renderBar(readiness.score)}
+        </div>
+      </div>
+
+      <div class="agent-grid">
+        <section class="agent-card">
+          <div class="section-title-row">
+            <h4>막히는 조건</h4>
+            <span class="count-badge">${readiness.issues.length}</span>
+          </div>
+          ${readiness.issues.length === 0
+            ? `<p class="soft-copy">현재 요약 기준으로 즉시 차단할 조건은 없습니다.</p>`
+            : readiness.issues.map((issue) => renderReadinessIssue(issue)).join("")}
+        </section>
+
+        <section class="agent-card">
+          <div class="section-title-row">
+            <h4>다음 3단계</h4>
+            <span class="count-badge">${readiness.nextSteps.length}</span>
+          </div>
+          <div class="readiness-steps">
+            ${readiness.nextSteps.map((step, index) => `
+              <article class="readiness-step">
+                <span>${index + 1}</span>
+                <div>
+                  <strong>${escapeHtml(step.title)}</strong>
+                  <p>${escapeHtml(step.body)}</p>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      </div>
+
+      <section class="agent-card">
+        <h4>분석별 적합도 힌트</h4>
+        <div class="method-fit-grid">
+          ${readiness.methodHints.map((hint) => `
+            <article class="method-fit ${hint.status}">
+              <strong>${escapeHtml(hint.title)}</strong>
+              <span>${escapeHtml(hint.label)}</span>
+              <p>${escapeHtml(hint.body)}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+
+      <div class="ai-bubble-list">
+        ${readiness.boundaries.map((boundary) => renderChatBubble("guardrail", boundary)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderReadinessIssue(issue) {
+  return `
+    <article class="readiness-issue ${issue.severity}">
+      <span>${escapeHtml(issue.severity)}</span>
+      <div>
+        <strong>${escapeHtml(issue.title)}</strong>
+        <p>${escapeHtml(issue.body)}</p>
+        <small>${escapeHtml(issue.action)}</small>
+      </div>
+    </article>
   `;
 }
 
