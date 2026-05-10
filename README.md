@@ -42,6 +42,39 @@ https://cloudvelvet.github.io/psychometrician-copilot/
 - 집단 비교와 공정성 검토 필요 여부
 - 점수 사용 목적과 해석 경계
 
+## How To Teach It
+
+이 앱은 현재 모델을 직접 fine-tuning하지 않습니다. 대신 전문가 지식을 작은 카드로 쌓아두고, 입력된 연구 조건과 추천 분석에 맞는 카드를 결정론적으로 검색합니다.
+
+지식 추가 위치:
+
+```text
+knowledge/topics.js
+```
+
+새 지식 카드는 아래 필드를 갖습니다.
+
+```js
+{
+  id: "missing_data",
+  title: "Missing data needs a stated handling plan",
+  relatedAnalyses: ["data_screening", "ordinal_cfa"],
+  keywords: ["missing", "결측", "fiml"],
+  summary: "짧은 전문가 요약",
+  checks: ["리포트에 보여줄 점검 항목"],
+  useWhen: ["이 지식을 꺼내야 하는 조건"]
+}
+```
+
+수정 후 확인:
+
+```powershell
+npm test
+npm run build
+```
+
+GitHub Pages에 반영하려면 변경사항을 `main` 브랜치에 push하면 됩니다.
+
 ## Screens
 
 ### 분석 상담

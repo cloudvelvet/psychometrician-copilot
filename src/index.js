@@ -27,7 +27,8 @@ export {
 
 export {
   listKnowledgeTopics,
-  retrieveKnowledge
+  retrieveKnowledge,
+  validateKnowledgeTopics
 } from "./knowledge-base.js";
 
 export { buildCodeTemplates } from "./code-templates.js";

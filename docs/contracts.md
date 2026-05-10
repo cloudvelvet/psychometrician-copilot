@@ -96,4 +96,18 @@ It returns `psychometric_copilot_v1` with:
 
 This DTO should not be merged into `interpretationInput`. The respondent-result DTO answers "what did this person score?", while the copilot DTO answers "what analysis plan is defensible for this study context?"
 
-The local knowledge registry is a seed retrieval layer. It is intentionally small and auditable; a future vector/RAG layer can replace retrieval while keeping the same consultation contract.
+## 6. Knowledge Registry
+
+The local knowledge registry lives in `knowledge/topics.js`. It is the first "training" layer for this static MVP.
+
+Each topic is an auditable card with:
+
+- `id`
+- `title`
+- `relatedAnalyses`
+- `keywords`
+- `summary`
+- `checks`
+- `useWhen`
+
+`retrieveKnowledge()` ranks those cards against the explicit study context and the generated recommendation IDs. This is not model fine-tuning; it is deterministic retrieval from a small expert-maintained registry. A future vector/RAG layer can replace retrieval while keeping the same consultation contract.

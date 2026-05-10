@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import {
   createCopilotConsultation,
-  retrieveKnowledge
+  listKnowledgeTopics,
+  retrieveKnowledge,
+  validateKnowledgeTopics
 } from "../src/index.js";
 
 test("copilot recommends ordinal CFA, IRT, invariance, and DIF for a grouped Likert study", () => {
@@ -95,4 +97,12 @@ test("knowledge retrieval returns reliability cautions for alpha questions", () 
 
   assert.equal(hits[0].id, "reliability");
   assert.ok(hits[0].checks.some((check) => check.includes("alpha")));
+});
+
+test("knowledge registry is editable but structurally validated", () => {
+  const topics = listKnowledgeTopics();
+
+  assert.deepEqual(validateKnowledgeTopics(), []);
+  assert.ok(topics.some((topic) => topic.id === "missing_data"));
+  assert.ok(topics.some((topic) => topic.relatedAnalyses?.includes("measurement_invariance")));
 });

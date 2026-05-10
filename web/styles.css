@@ -697,6 +697,18 @@ input:disabled {
   font-size: 13px;
 }
 
+.evidence-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.evidence-card li + li {
+  margin-top: 5px;
+}
+
 .template-card {
   overflow: hidden;
 }
