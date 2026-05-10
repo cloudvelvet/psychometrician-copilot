@@ -377,6 +377,120 @@ h4 {
   background: #084741;
 }
 
+.intake-coach {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid #9bcfc8;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, #f8fffd, #ffffff);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+.intake-coach-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 14px;
+  align-items: start;
+}
+
+.intake-coach-header h3 {
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.intake-coach-header p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.coach-score {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 11px;
+}
+
+.coach-score span,
+.coach-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coach-score strong {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.coach-score.success .score-track span,
+.coach-chip.success {
+  background: var(--green);
+}
+
+.coach-score.warning .score-track span,
+.coach-chip.warning {
+  background: var(--amber);
+}
+
+.coach-score.danger .score-track span,
+.coach-chip.danger {
+  background: var(--red);
+}
+
+.coach-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coach-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.coach-card.next {
+  background: #fffdf5;
+}
+
+.coach-card strong {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.coach-card p {
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+
+.coach-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.coach-chip {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--ink-soft);
+  color: #ffffff;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .consult-form,
 .upload-form,
 .item-list,
@@ -449,6 +563,11 @@ input:disabled {
   align-items: center;
   justify-content: space-between;
   margin-top: 2px;
+}
+
+.switch-stack {
+  display: grid;
+  gap: 8px;
 }
 
 .button-row {
@@ -1048,6 +1167,91 @@ input:disabled {
 .ai-bubble p {
   margin: 0;
   font-size: 13px;
+}
+
+.consult-task-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.consult-path-card,
+.consult-task-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.consult-path-card {
+  background: #f7fbff;
+}
+
+.consult-path-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.consult-path-card strong {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.consult-path-card p {
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+
+.consult-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.consult-task-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  overflow: hidden;
+}
+
+.consult-task-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--amber);
+  content: "";
+}
+
+.consult-task-card.success::before {
+  background: var(--green);
+}
+
+.consult-task-card.danger::before {
+  background: var(--red);
+}
+
+.consult-task-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.consult-task-card strong {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.consult-task-card p {
+  margin: 6px 0 0;
+  font-size: 12px;
 }
 
 .agent-panel {
@@ -1849,6 +2053,8 @@ input:disabled {
   .agent-panel-header,
   .agent-grid,
   .method-fit-grid,
+  .intake-coach-header,
+  .coach-grid,
   .packet-header,
   .packet-summary-grid,
   .packet-layout {
@@ -1895,6 +2101,7 @@ input:disabled {
   .warning-row,
   .mapping-row,
   .data-table-row,
+  .consult-task-card,
   .readiness-issue,
   .readiness-step {
     grid-template-columns: 1fr;

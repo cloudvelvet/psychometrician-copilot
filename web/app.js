@@ -22,7 +22,16 @@ const SAMPLE_CONTEXT = {
   expectedFactors: 3,
   groupComparison: true,
   groupVariable: "gender",
-  groups: ["female", "male"]
+  groups: ["female", "male"],
+  itemIds: [
+    "wb_1", "wb_2", "wb_3", "wb_4", "wb_5", "wb_6",
+    "stress_1", "stress_2", "stress_3", "stress_4", "stress_5", "stress_6",
+    "belonging_1", "belonging_2", "belonging_3", "belonging_4", "belonging_5", "belonging_6"
+  ],
+  missingData: "Initial screening expects item-level missingness under 5%; cases above 20% missing will be reviewed before modeling.",
+  distribution: "Five response categories are expected; sparse categories and skew will be checked before choosing ordinal CFA estimation.",
+  software: ["lavaan", "semTools", "mirt", "psych"],
+  highStakes: false
 };
 
 const state = {
@@ -43,15 +52,20 @@ const nodes = {
   clearDataButton: document.querySelector("#clearDataButton"),
   consultForm: document.querySelector("#consultForm"),
   constructInput: document.querySelector("#constructInput"),
+  consultCoach: document.querySelector("#consultCoach"),
   dataFileInput: document.querySelector("#dataFileInput"),
   dataMappingPanel: document.querySelector("#dataMappingPanel"),
+  distributionInput: document.querySelector("#distributionInput"),
   expectedFactorsInput: document.querySelector("#expectedFactorsInput"),
   groupComparisonInput: document.querySelector("#groupComparisonInput"),
   groupsInput: document.querySelector("#groupsInput"),
   groupVariableInput: document.querySelector("#groupVariableInput"),
+  highStakesInput: document.querySelector("#highStakesInput"),
   intendedUseInput: document.querySelector("#intendedUseInput"),
   itemCountInput: document.querySelector("#itemCountInput"),
+  itemIdsInput: document.querySelector("#itemIdsInput"),
   itemTypeInput: document.querySelector("#itemTypeInput"),
+  missingDataInput: document.querySelector("#missingDataInput"),
   progressBar: document.querySelector("#progressBar"),
   progressText: document.querySelector("#progressText"),
   purposeInput: document.querySelector("#purposeInput"),
@@ -66,6 +80,7 @@ const nodes = {
   scaleSelect: document.querySelector("#scaleSelect"),
   scaleTitle: document.querySelector("#scaleTitle"),
   scoreButton: document.querySelector("#scoreButton"),
+  softwareInput: document.querySelector("#softwareInput"),
   tabButtons: [...document.querySelectorAll(".tab-button")],
   uploadGroupSelect: document.querySelector("#uploadGroupSelect"),
   uploadMappingList: document.querySelector("#uploadMappingList"),
@@ -124,6 +139,14 @@ function wireConsultation() {
     renderConsultation();
   });
 
+  nodes.consultForm.addEventListener("input", () => {
+    renderConsultationCoach(createCopilotConsultation(readConsultationForm()));
+  });
+
+  nodes.consultForm.addEventListener("change", () => {
+    renderConsultationCoach(createCopilotConsultation(readConsultationForm()));
+  });
+
   nodes.consultForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderConsultation();
@@ -133,6 +156,7 @@ function wireConsultation() {
   nodes.groupComparisonInput.addEventListener("change", () => {
     nodes.groupVariableInput.disabled = !nodes.groupComparisonInput.checked;
     nodes.groupsInput.disabled = !nodes.groupComparisonInput.checked;
+    renderConsultationCoach(createCopilotConsultation(readConsultationForm()));
   });
 }
 
@@ -225,6 +249,10 @@ async function handleReportAction(button) {
     document.querySelector("#consultMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
+  if (action === "focus_field") {
+    focusConsultField(button.dataset.fieldTarget);
+    return;
+  }
   if (action === "edit_answers") {
     setMode("score");
     document.querySelector("#scoreMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -234,6 +262,17 @@ async function handleReportAction(button) {
     setMode("upload");
     document.querySelector("#uploadMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+}
+
+function focusConsultField(fieldId) {
+  setMode("consult");
+  const target = fieldId ? document.getElementById(fieldId) : null;
+  if (target instanceof HTMLElement) {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => target.focus(), 250);
+    return;
+  }
+  document.querySelector("#consultMode")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function copyReportBrief(button) {
@@ -742,6 +781,11 @@ function fillConsultationForm(context) {
   nodes.groupComparisonInput.checked = Boolean(context.groupComparison);
   nodes.groupVariableInput.value = context.groupVariable ?? "";
   nodes.groupsInput.value = Array.isArray(context.groups) ? context.groups.join(", ") : "";
+  nodes.itemIdsInput.value = Array.isArray(context.itemIds) ? context.itemIds.join(", ") : "";
+  nodes.missingDataInput.value = context.missingData ?? "";
+  nodes.distributionInput.value = context.distribution ?? "";
+  nodes.softwareInput.value = Array.isArray(context.software) ? context.software.join(", ") : "";
+  nodes.highStakesInput.checked = Boolean(context.highStakes);
   nodes.groupVariableInput.disabled = !nodes.groupComparisonInput.checked;
   nodes.groupsInput.disabled = !nodes.groupComparisonInput.checked;
 }
@@ -749,6 +793,8 @@ function fillConsultationForm(context) {
 function readConsultationForm() {
   const min = numberOrNull(nodes.scaleMinInput.value);
   const max = numberOrNull(nodes.scaleMaxInput.value);
+  const itemIds = splitList(nodes.itemIdsInput.value);
+  const software = splitList(nodes.softwareInput.value);
   return {
     purpose: nodes.purposeInput.value,
     construct: nodes.constructInput.value,
@@ -758,9 +804,14 @@ function readConsultationForm() {
     itemCount: numberOrNull(nodes.itemCountInput.value),
     sampleSize: numberOrNull(nodes.sampleSizeInput.value),
     expectedFactors: numberOrNull(nodes.expectedFactorsInput.value),
+    itemIds: itemIds.length > 0 ? itemIds : undefined,
+    missingData: nodes.missingDataInput.value,
+    distribution: nodes.distributionInput.value,
     groupComparison: nodes.groupComparisonInput.checked,
     groupVariable: nodes.groupComparisonInput.checked ? nodes.groupVariableInput.value : "",
-    groups: nodes.groupComparisonInput.checked ? splitList(nodes.groupsInput.value) : []
+    groups: nodes.groupComparisonInput.checked ? splitList(nodes.groupsInput.value) : [],
+    software: software.length > 0 ? software : undefined,
+    highStakes: nodes.highStakesInput.checked
   };
 }
 
@@ -770,6 +821,7 @@ function renderConsultation() {
   const errors = warnings.filter((warning) => warning.severity === "error").length;
   const flags = warnings.filter((warning) => warning.severity === "flag").length;
   const completion = completionRate(consultation);
+  renderConsultationCoach(consultation);
 
   nodes.resultPanel.innerHTML = `
     <article class="result-stack">
@@ -807,6 +859,106 @@ function renderConsultation() {
       ${renderEvidenceTopics(consultation.evidence)}
     </article>
   `;
+}
+
+function renderConsultationCoach(consultation) {
+  const coach = buildConsultationCoach(consultation);
+  nodes.consultCoach.innerHTML = `
+    <div class="intake-coach-header">
+      <div>
+        <p class="eyebrow">Intake Coach</p>
+        <h3>${escapeHtml(coach.title)}</h3>
+        <p>${escapeHtml(coach.summary)}</p>
+      </div>
+      <div class="coach-score ${escapeHtml(coach.state)}">
+        <span>Readiness</span>
+        <strong>${coach.completion}%</strong>
+        ${renderBar(coach.completion)}
+      </div>
+    </div>
+    <div class="coach-grid">
+      <article class="coach-card next">
+        <span>다음 입력</span>
+        <strong>${escapeHtml(coach.nextInput.title)}</strong>
+        <p>${escapeHtml(coach.nextInput.body)}</p>
+      </article>
+      <article class="coach-card">
+        <span>상담 상태</span>
+        <strong>${escapeHtml(coach.statusLabel)}</strong>
+        <p>${escapeHtml(coach.statusBody)}</p>
+      </article>
+    </div>
+    <div class="coach-chip-list">
+      ${coach.chips.map((chip) => `<span class="${escapeHtml(chip.className)}">${escapeHtml(chip.label)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function buildConsultationCoach(consultation) {
+  const completion = completionRate(consultation);
+  const errors = consultation.critic.warnings.filter((warning) => warning.severity === "error");
+  const missing = consultation.uncertain;
+  const context = consultation.context;
+  const state = errors.length > 0 ? "danger" : missing.length > 0 ? "warning" : "success";
+  const nextInput = nextConsultationInput(consultation);
+  const chips = [
+    {
+      label: context.itemIdsGenerated ? "문항 컬럼 placeholder" : "문항 컬럼 확인됨",
+      className: context.itemIdsGenerated ? "coach-chip warning" : "coach-chip success"
+    },
+    {
+      label: context.missingData ? "결측 정보 있음" : "결측 정보 필요",
+      className: context.missingData ? "coach-chip success" : "coach-chip warning"
+    },
+    {
+      label: context.distribution ? "범주 분포 있음" : "범주 분포 필요",
+      className: context.distribution ? "coach-chip success" : "coach-chip warning"
+    },
+    {
+      label: context.groupComparison
+        ? context.groupVariableProvided ? "집단 비교 준비 중" : "집단 변수 필요"
+        : "집단 비교 제외",
+      className: context.groupComparison && !context.groupVariableProvided ? "coach-chip danger" : "coach-chip"
+    }
+  ];
+
+  if (context.highStakes) {
+    chips.push({
+      label: "고위험 사용: 별도 검토",
+      className: "coach-chip danger"
+    });
+  }
+
+  return {
+    completion,
+    state,
+    title: state === "danger" ? "분석 전 차단 조건이 있습니다" : state === "warning" ? "몇 가지 설계 정보가 더 필요합니다" : "상담 입력이 꽤 단단합니다",
+    summary: "오른쪽 리포트는 제출 시 갱신되고, 이 코치는 입력 중인 설계의 빈칸과 위험 신호를 즉시 정리합니다.",
+    statusLabel: errors.length > 0 ? `${errors.length}개 차단 경고` : missing.length > 0 ? `${missing.length}개 누락 정보` : "전문가 검토 준비",
+    statusBody: errors[0]?.message ?? missing[0]?.question ?? "이제 오른쪽 리포트를 갱신해 연구 패킷과 코드 템플릿을 확인하세요.",
+    nextInput,
+    chips
+  };
+}
+
+function nextConsultationInput(consultation) {
+  const context = consultation.context;
+  if (consultation.critic.nextQuestions.length > 0) {
+    return {
+      title: consultation.critic.nextQuestions[0],
+      body: "이 정보를 입력하면 추천 분석과 연구 패킷의 provisional 문구가 줄어듭니다."
+    };
+  }
+  if (context.itemIdsGenerated) {
+    return {
+      title: "실제 문항 컬럼명을 넣으세요",
+      body: "item1, item2 placeholder 대신 실제 데이터 컬럼명이 들어가면 연구 패킷의 매핑표가 더 바로 쓸 수 있게 됩니다."
+    };
+  }
+  return {
+    title: "오른쪽 리포트 갱신",
+    body: "현재 입력으로 분석 로드맵, 연구 패킷, R 템플릿을 다시 생성할 수 있습니다."
+  };
 }
 
 function renderConsultationBrief(consultation, { completion, errors, flags }) {
@@ -848,27 +1000,97 @@ function renderConsultationActionRail(consultation) {
 }
 
 function renderConsultationChat(consultation) {
-  const nextQuestion = consultation.critic.nextQuestions[0] ?? "원자료의 결측, 범주 분포, 집단별 표본 크기를 확인하세요.";
-  const guidance = consultation.reportingGuidance[0] ?? "관찰된 결과와 구성개념 해석을 분리해서 보고하세요.";
-  const boundary = consultation.agentBoundaries[0];
+  const tasks = buildConsultationTaskQueue(consultation);
+  const path = consultation.recommendedAnalyses.slice(0, 4).map((analysis) => analysis.title).join(" → ");
+  const boundary = consultation.critic.mustNotDo[0] ?? consultation.agentBoundaries[0];
 
   return `
     <section class="ai-panel">
       <div class="ai-panel-header">
         <div>
-          <p class="eyebrow">AI Consultation Draft</p>
-          <h3>상담 문장 카드</h3>
+          <p class="eyebrow">Agent Work Queue</p>
+          <h3>상담 작업 큐</h3>
         </div>
         <span>deterministic</span>
       </div>
-      <div class="ai-bubble-list">
-        ${renderChatBubble("assistant", "현재 입력만 보면 분석 계획은 바로 확정하기보다, 데이터 스크리닝과 측정모형 확인을 먼저 고정하는 쪽이 좋습니다.")}
-        ${renderChatBubble("assistant", guidance)}
-        ${renderChatBubble("user", `다음에 확인할 질문: ${nextQuestion}`)}
-        ${renderChatBubble("guardrail", boundary)}
+      <div class="consult-task-grid">
+        <article class="consult-path-card">
+          <span>Recommended path</span>
+          <strong>${escapeHtml(path || "설계 정보를 더 입력하면 분석 경로가 생성됩니다.")}</strong>
+          <p>이 경로는 현재 입력값으로 만든 계획이며, 실제 원자료 분석 결과가 아닙니다.</p>
+        </article>
+        <div class="consult-task-list">
+          ${tasks.map((task, index) => `
+            <article class="consult-task-card ${escapeHtml(task.tone)}">
+              <div>
+                <span>${String(index + 1).padStart(2, "0")}</span>
+                <strong>${escapeHtml(task.title)}</strong>
+                <p>${escapeHtml(task.body)}</p>
+              </div>
+              ${task.fieldId ? `<button type="button" class="report-tool" data-report-action="focus_field" data-field-target="${escapeHtml(task.fieldId)}">입력</button>` : ""}
+            </article>
+          `).join("")}
+        </div>
+        <article class="ai-bubble guardrail">
+          <span>Boundary</span>
+          <p>${escapeHtml(boundary)}</p>
+        </article>
       </div>
     </section>
   `;
+}
+
+function buildConsultationTaskQueue(consultation) {
+  const tasks = consultation.uncertain.slice(0, 5).map((item) => ({
+    title: item.question,
+    body: "이 항목이 채워지면 추천 분석과 연구 패킷의 잠정 표시가 줄어듭니다.",
+    fieldId: consultationFieldMap(item.id),
+    tone: item.id === "group_variable" || item.id === "group_sizes" ? "danger" : "warning"
+  }));
+
+  if (consultation.context.itemIdsGenerated) {
+    tasks.push({
+      title: "실제 문항 컬럼명으로 placeholder를 교체하세요.",
+      body: "문항-요인 매핑표와 R 템플릿에서 item1, item2 대신 실제 컬럼명을 사용할 수 있습니다.",
+      fieldId: "itemIdsInput",
+      tone: "warning"
+    });
+  }
+
+  if (consultation.context.highStakes) {
+    tasks.unshift({
+      title: "고위험 사용은 별도 검토 흐름이 필요합니다.",
+      body: "임상, 채용, 선발, 처치 결정에는 별도 전문가·법적·윤리 검토가 필요합니다.",
+      fieldId: "highStakesInput",
+      tone: "danger"
+    });
+  }
+
+  if (tasks.length === 0) {
+    tasks.push({
+      title: "오른쪽 연구 패킷을 검토하세요.",
+      body: "입력 정보는 충분합니다. 이제 연구 패킷, 코드 템플릿, 경계 문구를 함께 확인하면 됩니다.",
+      fieldId: null,
+      tone: "success"
+    });
+  }
+
+  return tasks.slice(0, 5);
+}
+
+function consultationFieldMap(id) {
+  return {
+    purpose: "purposeInput",
+    construct: "constructInput",
+    intended_use: "intendedUseInput",
+    item_count: "itemCountInput",
+    sample_size: "sampleSizeInput",
+    response_scale: "scaleMinInput",
+    missing_data: "missingDataInput",
+    distribution: "distributionInput",
+    group_variable: "groupVariableInput",
+    group_sizes: "groupsInput"
+  }[id] ?? null;
 }
 
 function renderStudyPacket(consultation) {

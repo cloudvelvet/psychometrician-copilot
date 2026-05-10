@@ -47,6 +47,10 @@ test("study packet organizes a fully specified grouped Likert study", () => {
     itemCount: 18,
     sampleSize: 320,
     expectedFactors: 3,
+    itemIds: Array.from({ length: 18 }, (_, index) => `wb_${index + 1}`),
+    missingData: "Item-level missingness is under 5%.",
+    distribution: "All five categories are used with no severe sparse-category issue.",
+    software: ["lavaan", "semTools", "mirt", "psych"],
     groupComparison: true,
     groups: ["women", "men"],
     groupVariable: "gender"
@@ -57,8 +61,11 @@ test("study packet organizes a fully specified grouped Likert study", () => {
   assert.equal(packet.schemaVersion, "study_packet_v1");
   assert.equal(packet.deterministic, true);
   assert.equal(packet.itemFactorMap.length, 18);
+  assert.equal(packet.itemFactorMap[0].item, "wb_1");
+  assert.equal(packet.itemFactorMap[0].status, "확인 필요");
   assert.ok(packet.variableManifest.some((row) => row.name === "gender"));
   assert.ok(packet.analysisSequence.some((step) => step.title.includes("Measurement invariance")));
+  assert.ok(!packet.missingInformation.some((item) => item.includes("Missing-data pattern")));
   assert.ok(packet.reportingChecklist.some((item) => item.includes("집단 비교")));
   assert.ok(packet.codeTemplates.some((template) => template.id === "lavaan_ordinal_cfa"));
   assert.ok(packet.boundaryChecklist.some((item) => item.includes("R 코드 실행 결과가 아닙니다")));

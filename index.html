@@ -85,6 +85,8 @@
               <button class="ghost-button" type="button" id="sampleConsultButton">샘플 채우기</button>
             </header>
 
+            <aside class="intake-coach" id="consultCoach" aria-live="polite"></aside>
+
             <form class="consult-form" id="consultForm">
               <label>
                 <span>연구 목적</span>
@@ -135,15 +137,42 @@
               </div>
 
               <label>
+                <span>실제 문항 컬럼명</span>
+                <textarea id="itemIdsInput" rows="2" placeholder="예: wb_1, wb_2, wb_3_r, stress_1"></textarea>
+              </label>
+
+              <div class="form-grid">
+                <label>
+                  <span>결측 정보</span>
+                  <textarea id="missingDataInput" rows="3" placeholder="예: 전체 결측률 3%, 문항별 최대 7%, listwise 제외 예정"></textarea>
+                </label>
+                <label>
+                  <span>범주 분포 정보</span>
+                  <textarea id="distributionInput" rows="3" placeholder="예: 1번 범주 희소, 4-5번 쏠림, floor/ceiling 없음"></textarea>
+                </label>
+              </div>
+
+              <label>
+                <span>사용 예정 도구</span>
+                <input id="softwareInput" type="text" placeholder="예: lavaan, semTools, mirt, psych">
+              </label>
+
+              <label>
                 <span>비교 집단</span>
                 <input id="groupsInput" type="text" placeholder="예: female, male">
               </label>
 
               <div class="form-actions">
-                <label class="switch">
-                  <input id="groupComparisonInput" type="checkbox" checked>
-                  <span>집단 비교 및 공정성 검토 포함</span>
-                </label>
+                <div class="switch-stack">
+                  <label class="switch">
+                    <input id="groupComparisonInput" type="checkbox" checked>
+                    <span>집단 비교 및 공정성 검토 포함</span>
+                  </label>
+                  <label class="switch">
+                    <input id="highStakesInput" type="checkbox">
+                    <span>임상·채용·선발 등 고위험 사용 검토</span>
+                  </label>
+                </div>
                 <button class="primary-button" type="submit">오른쪽 리포트 갱신</button>
               </div>
             </form>
