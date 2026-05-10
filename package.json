@@ -7,7 +7,9 @@
   "scripts": {
     "test": "node --test",
     "demo": "node examples/run-demo.mjs",
-    "assess": "node bin/assess.mjs"
+    "assess": "node bin/assess.mjs",
+    "consult": "node bin/copilot.mjs",
+    "web": "node bin/serve-web.mjs"
   },
   "engines": {
     "node": ">=20"

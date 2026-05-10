@@ -19,3 +19,21 @@ export {
 
 export { projectForAI } from "./ai-projection.js";
 export { loadScale } from "./load-scale.js";
+
+export {
+  resolveScorableItemIds,
+  resolveSubscaleItemIds
+} from "./subscales.js";
+
+export {
+  listKnowledgeTopics,
+  retrieveKnowledge
+} from "./knowledge-base.js";
+
+export { buildCodeTemplates } from "./code-templates.js";
+
+export {
+  createCopilotConsultation,
+  normalizeStudyContext,
+  recommendAnalyses
+} from "./copilot.js";

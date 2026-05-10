@@ -43,3 +43,29 @@ test("cronbachAlphaForScale scores reverse items before reliability calculation"
   assert.equal(result.respondentCount, 4);
   assert.equal(result.itemCount, 2);
 });
+
+test("cronbachAlphaForScale resolves subscale items from factor metadata when items are implicit", () => {
+  const scale = {
+    id: "implicit_subscale_fixture",
+    name: "Implicit Subscale Fixture",
+    responseScale: { min: 1, max: 5 },
+    items: [
+      { id: "x1", factor: "x", reverse: false },
+      { id: "x2", factor: "x", reverse: true },
+      { id: "att", factor: "validity", reverse: false, excludeFromScoring: true }
+    ],
+    subscales: {
+      x: { method: "mean" }
+    }
+  };
+
+  const result = cronbachAlphaForScale(scale, [
+    { x1: 1, x2: 5, att: 3 },
+    { x1: 2, x2: 4, att: 3 },
+    { x1: 3, x2: 3, att: 3 },
+    { x1: 4, x2: 2, att: 3 }
+  ], { subscaleId: "x" });
+
+  assert.equal(result.alpha, 1);
+  assert.equal(result.itemCount, 2);
+});

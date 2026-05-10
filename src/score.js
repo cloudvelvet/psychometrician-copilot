@@ -1,4 +1,5 @@
 import { projectForAI } from "./ai-projection.js";
+import { resolveSubscaleItemIds } from "./subscales.js";
 import { evaluateValidity } from "./validity.js";
 
 const DEFAULT_MIN_ANSWERED_RATIO = 0.8;
@@ -65,7 +66,7 @@ export function validateScale(scale) {
 
   const subscales = scale.subscales ?? {};
   for (const [subscaleId, subscale] of Object.entries(subscales)) {
-    const refs = subscale.items ?? items.filter((item) => item.factor === subscaleId).map((item) => item.id);
+    const refs = resolveSubscaleItemIds(scale, subscaleId);
     if (!Array.isArray(refs) || refs.length === 0) {
       throw new Error(`Subscale ${subscaleId} must reference at least one item.`);
     }
@@ -137,7 +138,7 @@ export function scoreAssessment(scale, responses, options = {}) {
     subscales[subscaleId] = scoreSubscale({
       subscaleId,
       subscale,
-      allItems: scale.items,
+      itemIds: resolveSubscaleItemIds(scale, subscaleId),
       itemById,
       itemScores,
       defaultMinAnsweredRatio: options.defaultMinAnsweredRatio ?? DEFAULT_MIN_ANSWERED_RATIO
@@ -176,7 +177,7 @@ export function scoreAssessment(scale, responses, options = {}) {
 function scoreSubscale({
   subscaleId,
   subscale,
-  allItems,
+  itemIds,
   itemById,
   itemScores,
   defaultMinAnsweredRatio
@@ -185,10 +186,6 @@ function scoreSubscale({
   if (!["mean", "sum"].includes(method)) {
     throw new Error(`Unsupported scoring method for ${subscaleId}: ${method}`);
   }
-
-  const itemIds = subscale.items ?? allItems
-    .filter((item) => item.factor === subscaleId && !item.excludeFromScoring)
-    .map((item) => item.id);
 
   const eligibleIds = itemIds.filter((itemId) => !itemById.get(itemId)?.excludeFromScoring);
   const answered = eligibleIds

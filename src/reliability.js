@@ -1,4 +1,5 @@
 import { normalizeResponses, scoreItem, validateScale } from "./score.js";
+import { resolveScorableItemIds, resolveSubscaleItemIds } from "./subscales.js";
 
 export function cronbachAlpha(matrix) {
   const rows = matrix
@@ -35,8 +36,8 @@ export function cronbachAlphaForScale(scale, respondentResponses, options = {}) 
   validateScale(scale);
 
   const targetItemIds = options.subscaleId
-    ? scale.subscales?.[options.subscaleId]?.items
-    : scale.items.filter((item) => !item.excludeFromScoring).map((item) => item.id);
+    ? resolveSubscaleItemIds(scale, options.subscaleId)
+    : resolveScorableItemIds(scale);
 
   if (!Array.isArray(targetItemIds) || targetItemIds.length < 2) {
     return {

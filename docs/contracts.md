@@ -66,3 +66,34 @@ Check sources:
 - reporting boundaries
 
 It intentionally omits raw response arrays and does not expose scoring metadata that would invite an LLM to recalculate results.
+
+## 5. Copilot Consultation
+
+`createCopilotConsultation(studyContext)` is a separate planning surface from respondent scoring.
+
+It consumes explicit study-design context such as:
+
+- research purpose and construct definition
+- intended score use
+- item type and response scale
+- item count and sample size
+- expected factor count and item IDs
+- group-comparison needs, including an explicit grouping-variable column
+- missing-data and distribution notes
+
+It returns `psychometric_copilot_v1` with:
+
+- `known`
+- `assumptions`
+- `uncertain`
+- `recommendedAnalyses`
+- `alternatives`
+- `evidence`
+- `codeTemplates`
+- `reportingGuidance`
+- `limitations`
+- `critic`
+
+This DTO should not be merged into `interpretationInput`. The respondent-result DTO answers "what did this person score?", while the copilot DTO answers "what analysis plan is defensible for this study context?"
+
+The local knowledge registry is a seed retrieval layer. It is intentionally small and auditable; a future vector/RAG layer can replace retrieval while keeping the same consultation contract.

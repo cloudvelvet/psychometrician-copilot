@@ -1,11 +1,15 @@
 export function buildCodeTemplates(context = {}, recommendations = [], options = {}) {
+  if (!hasTemplateItems(context)) {
+    return [];
+  }
+
   const ids = new Set(recommendations.map((recommendation) => (
     typeof recommendation === "string" ? recommendation : recommendation.id
   )));
   const templateContext = normalizeTemplateContext(context, options);
   const templates = [];
 
-  if (ids.has("ordinal_cfa") || ids.has("cfa")) {
+  if ((ids.has("ordinal_cfa") || ids.has("cfa")) && hasPossibleFactorModel(templateContext)) {
     templates.push(buildCfaTemplate(templateContext, ids.has("ordinal_cfa")));
   }
 
@@ -21,7 +25,7 @@ export function buildCodeTemplates(context = {}, recommendations = [], options =
     templates.push(buildBinaryIrtTemplate(templateContext));
   }
 
-  if (ids.has("measurement_invariance")) {
+  if (ids.has("measurement_invariance") && templateContext.groupVariable && hasPossibleFactorModel(templateContext)) {
     templates.push(buildInvarianceTemplate(templateContext));
   }
 
@@ -33,7 +37,7 @@ export function buildCodeTemplates(context = {}, recommendations = [], options =
 }
 
 function normalizeTemplateContext(context, options) {
-  const itemCount = positiveInteger(context.itemCount) ?? options.defaultItemCount ?? 6;
+  const itemCount = positiveInteger(context.itemCount) ?? options.defaultItemCount;
   const itemIds = Array.isArray(context.itemIds) && context.itemIds.length > 0
     ? context.itemIds.map(String)
     : Array.from({ length: itemCount }, (_, index) => `item${index + 1}`);
@@ -43,8 +47,16 @@ function normalizeTemplateContext(context, options) {
     itemCount: itemIds.length,
     itemIds,
     expectedFactors: positiveInteger(context.expectedFactors) ?? 1,
-    groupVariable: context.groupVariable ?? "group"
+    groupVariable: context.groupVariable ?? null
   };
+}
+
+function hasTemplateItems(context) {
+  return (Array.isArray(context.itemIds) && context.itemIds.length > 0) || positiveInteger(context.itemCount);
+}
+
+function hasPossibleFactorModel(context) {
+  return !context.expectedFactors || context.expectedFactors <= context.itemIds.length;
 }
 
 function buildCfaTemplate(context, ordinal) {

@@ -18,6 +18,12 @@ Deterministic psychometric scoring engine for AI-agent workflows. The core rule 
   - consistency pairs
 - Cohort reliability helper:
   - Cronbach alpha
+- Psychometrician Copilot consultation:
+  - known facts, assumptions, and missing design facts
+  - method recommendations for EFA/CFA/IRT/DIF/invariance
+  - local knowledge-topic retrieval
+  - R code templates for lavaan, psych, mirt, and semTools
+  - deterministic critic warnings
 - AI-facing projection DTO:
   - non-diagnostic marker
   - scale provenance
@@ -35,14 +41,18 @@ Deterministic psychometric scoring engine for AI-agent workflows. The core rule 
 ```bash
 npm test
 npm run demo
+npm run consult
 npm run assess
+npm run web
 ```
 
-On Windows PowerShell, use `cmd /c npm test`, `cmd /c npm run demo`, or `cmd /c npm run assess` if script execution policy blocks `npm.ps1`.
+On Windows PowerShell, use `cmd /c npm test`, `cmd /c npm run demo`, `cmd /c npm run consult`, `cmd /c npm run assess`, or `cmd /c npm run web` if script execution policy blocks `npm.ps1`.
 
 No third-party packages are required.
 
 `npm run assess` is the interactive runner. It lets you choose a demo scale and answer each item from the terminal.
+
+`npm run consult` runs a sample Psychometrician Copilot consultation. Use `npm run consult -- --json` to inspect the full DTO, including generated code templates. Use `npm run consult -- --file study-context.json` to provide your own study context.
 
 PowerShell-friendly commands:
 
@@ -54,6 +64,17 @@ npm.cmd run assess -- --no-color
 ```
 
 The default `assess` output is a readable terminal report with boxes, score bars, and color when the terminal supports it. Use `-- --json` only when you want the raw AI projection DTO, and `-- --no-color` when plain output is easier to copy.
+
+## Web Preview and Vercel
+
+This repository includes a static browser app for Vercel.
+
+```powershell
+cd C:\ai\psychometric-engine
+npm.cmd run web
+```
+
+Open `http://localhost:4173` to test the browser UI. For Vercel, import the GitHub repository and deploy it as a static project. The app entrypoint is `index.html`.
 
 ## Minimal Usage
 
@@ -85,6 +106,7 @@ The lower-level API is split intentionally:
 - `evaluateValidity(scale, responseMap, itemScores)` for respondent validity
 - `cronbachAlphaForScale(scale, respondentResponses)` for cohort reliability
 - `projectForAI(result, scale)` for LLM-safe report input
+- `createCopilotConsultation(studyContext)` for psychometric analysis planning
 
 ## Scale Definition Shape
 
@@ -129,6 +151,27 @@ Avoid:
 - "You have depression."
 - "This score means hire/reject."
 - "The AI adjusted the score."
+
+For study-design consultation, pass an explicit study context to `createCopilotConsultation` instead of overloading respondent scores:
+
+```js
+import { createCopilotConsultation } from "./src/index.js";
+
+const consultation = createCopilotConsultation({
+  purpose: "Evaluate a 3-factor Likert questionnaire",
+  construct: "workplace wellbeing",
+  intendedUse: "research report",
+  responseScale: { min: 1, max: 5 },
+  itemCount: 18,
+  sampleSize: 320,
+  expectedFactors: 3,
+  groupComparison: true,
+  groupVariable: "group_id",
+  groups: ["group_a", "group_b"]
+});
+
+console.log(consultation.recommendedAnalyses);
+```
 
 ## Reliability Notes
 

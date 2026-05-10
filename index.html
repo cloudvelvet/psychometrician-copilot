@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Psychometric Engine</title>
+    <link rel="stylesheet" href="/web/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="심리측정 검사">
+        <aside class="sidebar">
+          <div class="brand-block">
+            <p class="eyebrow">Psychometric Engine</p>
+            <h1>심리측정 검사</h1>
+            <p>문항에 응답하면 결정론적 채점 엔진이 하위요인, 응답 타당도, 요약 결과를 계산합니다.</p>
+          </div>
+
+          <div class="scale-panel">
+            <label for="scaleSelect">척도 선택</label>
+            <select id="scaleSelect"></select>
+          </div>
+
+          <div class="status-panel">
+            <div>
+              <span class="status-label">응답 진행</span>
+              <strong id="progressText">0 / 0</strong>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <span id="progressBar"></span>
+            </div>
+          </div>
+
+          <div class="notice">
+            <strong>안내</strong>
+            <p>현재 포함된 문항은 프로토타입용 데모입니다. 실제 진단, 채용, 평가에는 검증된 척도를 연결해야 합니다.</p>
+          </div>
+        </aside>
+
+        <section class="main-panel">
+          <header class="scale-header">
+            <div>
+              <p id="scaleMeta" class="eyebrow">Demo scale</p>
+              <h2 id="scaleTitle">척도를 불러오는 중</h2>
+            </div>
+            <button id="resetButton" type="button">초기화</button>
+          </header>
+
+          <form id="assessmentForm" class="item-list"></form>
+
+          <div class="actions">
+            <button id="scoreButton" type="button" class="primary">결과 보기</button>
+          </div>
+        </section>
+
+        <section id="resultPanel" class="result-panel" aria-live="polite">
+          <div class="empty-state">
+            <p class="eyebrow">Result</p>
+            <h2>아직 결과가 없습니다</h2>
+            <p>왼쪽에서 척도를 고르고 문항에 응답한 뒤 결과를 확인하세요.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/web/app.js"></script>
+  </body>
+</html>
