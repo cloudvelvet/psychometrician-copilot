@@ -16,6 +16,7 @@ https://cloudvelvet.github.io/psychometrician-copilot/
 
 - 연구 조건 기반 심리측정 분석 상담
 - Intake Coach: 입력 중인 연구 설계를 실시간으로 점검하고 다음에 채울 정보를 안내
+- 분석 상담 결과 콘솔: Executive briefing, Now/Next/Watch 결정판, 분석 파이프라인, 작업 큐를 한 화면에서 정리
 - Study Packet Builder: 연구 설계 요약, 변수 manifest, 문항-요인 매핑표, 분석 순서, 누락 정보, 보고문 체크리스트, R 코드 템플릿, 다음 입력값을 하나의 연구 패킷으로 정리
 - EFA, CFA, IRT, DIF, 측정동일성 추천 로드맵
 - 누락된 설계 정보와 비판자 경고

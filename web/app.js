@@ -844,15 +844,9 @@ function renderConsultation() {
         { label: "입력 수정", action: "edit_inputs" }
       ])}
 
-      <section class="metric-grid">
-        ${renderMetric("입력 완성도", `${completion}%`, renderBar(completion))}
-        ${renderMetric("추천 분석", `${consultation.recommendedAnalyses.length}개`, "CFA · IRT · DIF")}
-        ${renderMetric("근거 토픽", `${consultation.evidence.length}개`, "local registry")}
-        ${renderMetric("경고", `${errors} error · ${flags} flag`, "critic review")}
-      </section>
-
       ${renderConsultationBrief(consultation, { completion, errors, flags })}
-      ${renderConsultationActionRail(consultation)}
+      ${renderConsultationDecisionBoard(consultation)}
+      ${renderConsultationPipeline(consultation.recommendedAnalyses)}
       ${renderConsultationChat(consultation)}
       ${renderStudyPacket(consultation)}
       ${renderWarnings(consultation.critic.warnings)}
@@ -964,39 +958,122 @@ function nextConsultationInput(consultation) {
 function renderConsultationBrief(consultation, { completion, errors, flags }) {
   const primary = consultation.recommendedAnalyses[0];
   const missing = consultation.uncertain.length;
+  const codeCount = consultation.codeTemplates.length;
   const verdict = errors > 0
-    ? "검토 후 진행"
+    ? "분석 전 차단 조건 해결"
     : flags > 0
-      ? "전문가 검토 필요"
-      : "보고 준비 가능";
+      ? "잠정 계획: 전문가 검토 필요"
+      : "연구 패킷 검토 단계";
   const summary = primary
-    ? `현재 설계에서는 ${primary.title}을 먼저 고정하고, 그 다음 분석을 단계적으로 연결하는 흐름이 가장 안전합니다.`
+    ? `현재 입력에서는 ${primary.title}을 출발점으로 잡고, 데이터 스크리닝과 측정모형 확인을 순서대로 묶는 계획이 가장 안전합니다.`
     : "현재 입력만으로는 추천 분석을 확정하기 어렵습니다. 핵심 설계 정보를 먼저 보강하세요.";
+  const statusTone = errors > 0 ? "danger" : flags > 0 ? "warning" : "success";
 
   return `
-    <section class="report-hero">
+    <section class="report-hero consult-hero">
       <div class="report-hero-main">
-        <p class="eyebrow">Executive Brief</p>
+        <p class="eyebrow">Executive Analysis Briefing</p>
         <h3>${escapeHtml(verdict)}</h3>
         <p>${escapeHtml(summary)}</p>
+        <div class="briefing-meta">
+          <span>${consultation.known.length} known facts</span>
+          <span>${missing} missing inputs</span>
+          <span>${consultation.recommendedAnalyses.length} methods</span>
+          <span>${codeCount} R templates</span>
+        </div>
       </div>
-      <div class="report-hero-aside">
-        <span>Readiness</span>
+      <div class="report-hero-aside briefing-score ${statusTone}">
+        <span>Input readiness</span>
         <strong>${completion}%</strong>
         ${renderBar(completion)}
-        <small>${missing === 0 ? "필수 설계 정보가 채워졌습니다." : `${missing}개 설계 정보가 더 필요합니다.`}</small>
+        <small>${errors > 0 ? `${errors}개 차단 조건부터 해결하세요.` : missing === 0 ? "패킷 검토와 실제 데이터 확인 단계입니다." : `${missing}개 설계 정보가 더 필요합니다.`}</small>
       </div>
     </section>
   `;
 }
 
-function renderConsultationActionRail(consultation) {
-  const actions = consultation.recommendedAnalyses.slice(0, 3).map((analysis) => ({
-    title: analysis.title,
-    meta: `${analysis.priority} priority · ${analysis.confidence} confidence`,
-    body: analysis.output
-  }));
-  return renderActionRail("Next Best Actions", actions);
+function renderConsultationDecisionBoard(consultation) {
+  const primary = consultation.recommendedAnalyses[0];
+  const task = buildConsultationTaskQueue(consultation)[0];
+  const warning = consultation.critic.warnings.find((item) => item.severity === "error") ??
+    consultation.critic.warnings[0];
+  const cards = [
+    {
+      tone: "now",
+      label: "Now",
+      title: primary?.title ?? "설계 정보 보강",
+      body: primary?.rationale ?? "연구 목적, 구성개념, 문항 수, 표본 수를 먼저 입력해야 분석 계획을 만들 수 있습니다.",
+      meta: primary ? `${primary.priority} priority · ${primary.confidence} confidence` : "intake needed"
+    },
+    {
+      tone: task?.tone ?? "next",
+      label: "Next",
+      title: task?.title ?? "연구 패킷 검토",
+      body: task?.body ?? "현재 입력으로 생성된 연구 패킷과 R 템플릿을 확인하세요.",
+      meta: task?.fieldId ? "입력칸으로 이동 가능" : "review packet",
+      fieldId: task?.fieldId
+    },
+    {
+      tone: warning?.severity === "error" ? "danger" : "watch",
+      label: "Watch",
+      title: warning?.message ?? "자동 통과 기준은 없습니다",
+      body: warning
+        ? "이 조건은 추천 분석의 해석 범위와 실행 가능성을 제한합니다."
+        : "적합도 지수와 신뢰도 계수는 절대적 합격 기준이 아니라 맥락 속에서 보고해야 합니다.",
+      meta: warning ? warning.severity : "boundary"
+    }
+  ];
+
+  return `
+    <section class="result-section decision-board" aria-label="Consultation decisions">
+      ${cards.map((card) => `
+        <article class="decision-card ${escapeHtml(card.tone)}">
+          <span>${escapeHtml(card.label)}</span>
+          <strong>${escapeHtml(card.title)}</strong>
+          <p>${escapeHtml(card.body)}</p>
+          <div class="decision-card-footer">
+            <small>${escapeHtml(card.meta)}</small>
+            ${card.fieldId ? `<button type="button" class="report-tool" data-report-action="focus_field" data-field-target="${escapeHtml(card.fieldId)}">입력</button>` : ""}
+          </div>
+        </article>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderConsultationPipeline(analyses) {
+  if (analyses.length === 0) {
+    return `
+      <section class="result-section analysis-pipeline">
+        <h3>분석 파이프라인</h3>
+        <p class="soft-copy">설계 정보를 더 입력하면 권장 분석 순서를 만들 수 있습니다.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="result-section analysis-pipeline">
+      <div class="section-title-row">
+        <h3>분석 파이프라인</h3>
+        <span class="count-badge">${analyses.length}</span>
+      </div>
+      <div class="pipeline-list">
+        ${analyses.map((analysis, index) => `
+          <article class="pipeline-item ${escapeHtml(analysis.priority)}">
+            <div class="pipeline-index">${String(index + 1).padStart(2, "0")}</div>
+            <div>
+              <div class="pipeline-heading">
+                <strong>${escapeHtml(analysis.title)}</strong>
+                <span>${escapeHtml(analysis.priority)} · ${escapeHtml(analysis.confidence)}</span>
+              </div>
+              <p>${escapeHtml(analysis.rationale)}</p>
+              <small>${escapeHtml(analysis.output)}</small>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderConsultationChat(consultation) {
@@ -1100,10 +1177,10 @@ function renderStudyPacket(consultation) {
   const hiddenMappingCount = packet.itemFactorMap.length - mappingRows.length;
 
   return `
-    <section class="study-packet result-section" aria-labelledby="studyPacketTitle">
+    <section class="study-packet result-section result-annex" aria-labelledby="studyPacketTitle">
       <div class="packet-header">
         <div>
-          <p class="eyebrow">Study Packet Builder</p>
+          <p class="eyebrow">Annex · Study Packet Builder</p>
           <h3 id="studyPacketTitle">연구 패킷</h3>
           <p>상담 입력값을 실제 연구자가 확인할 작업 단위로 재구성했습니다. 이 패킷은 분석을 실행하지 않고, 실행 전 필요한 설계·자료·보고 항목을 정리합니다.</p>
         </div>
@@ -1324,8 +1401,11 @@ function renderAnalysisRoadmap(analyses) {
 
 function renderEvidenceTopics(evidence) {
   return `
-    <section class="result-section">
-      <h3>근거 토픽</h3>
+    <section class="result-section result-annex evidence-annex">
+      <div class="section-title-row">
+        <h3>근거 토픽</h3>
+        <span class="count-badge">${evidence.length}</span>
+      </div>
       <div class="evidence-grid">
         ${evidence.slice(0, 6).map((topic) => `
           <article class="evidence-card">
@@ -1372,8 +1452,11 @@ function renderCodeTemplates(templates) {
 
 function renderWarnings(warnings) {
   return `
-    <section class="result-section">
-      <h3>비판자 경고</h3>
+    <section class="result-section result-annex warning-annex">
+      <div class="section-title-row">
+        <h3>비판자 경고</h3>
+        <span class="count-badge">${warnings.length}</span>
+      </div>
       <div class="warning-list">
         ${warnings.length === 0
           ? `<p class="soft-copy">차단 경고는 없습니다. 실제 분석 전 전문가 검토는 유지하세요.</p>`
