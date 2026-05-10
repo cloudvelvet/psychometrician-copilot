@@ -1,16 +1,14 @@
 {
-  "name": "psychometric-engine",
+  "name": "psychometrician-copilot",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Deterministic psychometric scoring engine MVP for AI-agent workflows.",
+  "description": "Static psychometric consultation and demo scoring app for GitHub Pages.",
   "scripts": {
     "build": "node bin/build-static.mjs",
-    "test": "node --test",
-    "demo": "node examples/run-demo.mjs",
-    "assess": "node bin/assess.mjs",
-    "consult": "node bin/copilot.mjs",
-    "web": "node bin/serve-web.mjs"
+    "test": "node --check web/app.js && node --check src/copilot.js && node --check src/score.js",
+    "web": "node bin/serve-web.mjs",
+    "consult": "node bin/copilot.mjs"
   },
   "engines": {
     "node": ">=20"

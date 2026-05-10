@@ -1,205 +1,95 @@
-# Psychometric Engine MVP
+# Psychometrician Copilot
 
-Deterministic psychometric scoring engine for AI-agent workflows. The core rule is simple: the engine calculates scores; the AI agent only explains structured results.
+심리측정 연구자를 위한 분석 설계 보조 웹앱입니다.
 
-## What It Does
+사용자가 연구 조건을 입력하면 CFA, IRT, DIF, 측정동일성, 신뢰도, 타당도 근거를 어떤 순서로 확인해야 하는지 구조화된 리포트로 보여줍니다. 데모 척도 채점 화면도 함께 제공해, AI가 점수를 임의로 계산하지 않고 결정론적 엔진 결과만 설명하도록 설계했습니다.
 
-- Item scoring with Likert range validation
-- Reverse scoring with `min + max - raw`
-- Item-specific response bounds
-- Subscale scoring with `mean` or `sum`
-- Missing-response handling with `minAnsweredRatio`
-- Validity checks:
-  - missing rate
-  - long-string response patterns
-  - response variance
-  - extreme response rate
-  - attention checks
-  - consistency pairs
-- Cohort reliability helper:
-  - Cronbach alpha
-- Psychometrician Copilot consultation:
-  - known facts, assumptions, and missing design facts
-  - method recommendations for EFA/CFA/IRT/DIF/invariance
-  - local knowledge-topic retrieval
-  - R code templates for lavaan, psych, mirt, and semTools
-  - deterministic critic warnings
-- AI-facing projection DTO:
-  - non-diagnostic marker
-  - scale provenance
-  - caveats
-  - no raw response array
-- Demo scales:
-  - Big Five
-  - stress
-  - burnout
-  - affect state
-  - job fit
+## Live Demo
 
-## Run
+GitHub Pages 배포 후 아래 주소에서 확인할 수 있습니다.
 
-```bash
-npm test
-npm run demo
-npm run consult
-npm run assess
+```text
+https://cloudvelvet.github.io/psychometrician-copilot/
+```
+
+## What It Shows
+
+- 연구 조건 기반 심리측정 분석 상담
+- EFA, CFA, IRT, DIF, 측정동일성 추천 로드맵
+- 누락된 설계 정보와 비판자 경고
+- lavaan, mirt, psych, semTools용 R 코드 템플릿
+- 데모 척도 채점 및 하위요인 점수 리포트
+- 응답 품질 경고: 누락, long-string, 극단 응답, 주의문항, 일관성 쌍
+
+## Why This Exists
+
+일반 LLM은 심리측정 질문에 대해 단순한 기준을 기계적으로 말하기 쉽습니다.
+
+예를 들면:
+
+- `alpha > .70이면 신뢰도가 좋다`
+- `CFI > .90이면 모형이 적합하다`
+- `5점 Likert 문항에도 일단 CFA를 하면 된다`
+
+이 앱은 그런 단순 답변 대신, 분석 전에 확인해야 할 조건을 먼저 드러냅니다.
+
+- 연구 목적
+- 구성개념 정의
+- 문항 수와 응답척도
+- 표본 수
+- 예상 요인 구조
+- 결측과 범주 분포
+- 집단 비교와 공정성 검토 필요 여부
+- 점수 사용 목적과 해석 경계
+
+## Screens
+
+### 분석 상담
+
+연구 조건을 입력하면 분석 로드맵, 근거 토픽, 코드 템플릿, 경고를 한 화면에서 확인할 수 있습니다.
+
+### 척도 채점
+
+데모 척도에 응답하면 하위요인 점수, 전체 평균, 응답 품질 상태를 확인할 수 있습니다.
+
+## Local Preview
+
+```powershell
 npm run web
 ```
 
-On Windows PowerShell, use `cmd /c npm test`, `cmd /c npm run demo`, `cmd /c npm run consult`, `cmd /c npm run assess`, or `cmd /c npm run web` if script execution policy blocks `npm.ps1`.
-
-No third-party packages are required.
-
-`npm run assess` is the interactive runner. It lets you choose a demo scale and answer each item from the terminal.
-
-`npm run consult` runs a sample Psychometrician Copilot consultation. Use `npm run consult -- --json` to inspect the full DTO, including generated code templates. Use `npm run consult -- --file study-context.json` to provide your own study context.
-
-PowerShell-friendly commands:
-
-```powershell
-cd C:\ai\psychometric-engine
-npm.cmd run assess
-npm.cmd run assess -- --json
-npm.cmd run assess -- --no-color
-```
-
-The default `assess` output is a readable terminal report with boxes, score bars, and color when the terminal supports it. Use `-- --json` only when you want the raw AI projection DTO, and `-- --no-color` when plain output is easier to copy.
-
-## Web Preview
-
-This repository includes a static browser app.
-
-```powershell
-cd C:\ai\psychometric-engine
-npm.cmd run web
-```
-
-Open `http://localhost:4173` to test the browser UI.
-
-## GitHub Pages
-
-GitHub Pages deployment is configured through `.github/workflows/pages.yml`.
-
-1. Push this project to a GitHub repository.
-2. In GitHub, open `Settings -> Pages`.
-3. Set `Source` to `GitHub Actions`.
-4. Push to the `main` branch, or run the `Deploy GitHub Pages` workflow manually.
-
-The workflow runs `npm run build`, uploads `public/`, and publishes the static app. The app uses relative asset paths so it works under repository URLs such as:
+브라우저에서 엽니다.
 
 ```text
-https://username.github.io/repository-name/
+http://localhost:4173
 ```
 
-If your default branch is not `main`, update `.github/workflows/pages.yml`.
+## Deploy
 
-## Minimal Usage
+이 저장소는 GitHub Pages 배포용 workflow를 포함합니다.
 
-```js
-import { loadScale, scoreAssessment } from "./src/index.js";
+1. GitHub repository의 `Settings -> Pages`로 이동
+2. `Source`를 `GitHub Actions`로 선택
+3. `Actions` 탭에서 `Deploy GitHub Pages` workflow 실행 확인
 
-const scale = await loadScale("./scales/big-five-demo.json");
+수동 빌드:
 
-const result = scoreAssessment(scale, {
-  bf_o_1: 5,
-  bf_o_2: 2,
-  bf_c_1: 4,
-  bf_c_2: 2,
-  bf_e_1: 3,
-  bf_e_2: 4,
-  bf_a_1: 5,
-  bf_a_2: 2,
-  bf_n_1: 4,
-  bf_n_2: 2,
-  bf_attention_1: 3
-});
-
-console.log(result.interpretationInput);
+```powershell
+npm run build
 ```
 
-The lower-level API is split intentionally:
+빌드 결과는 `public/`에 생성됩니다.
 
-- `scoreAssessment(scale, responses)` for one respondent
-- `evaluateValidity(scale, responseMap, itemScores)` for respondent validity
-- `cronbachAlphaForScale(scale, respondentResponses)` for cohort reliability
-- `projectForAI(result, scale)` for LLM-safe report input
-- `createCopilotConsultation(studyContext)` for psychometric analysis planning
+## Important Boundary
 
-## Scale Definition Shape
+이 앱은 진단 도구가 아닙니다.
 
-```json
-{
-  "id": "scale_id",
-  "name": "Scale Name",
-  "responseScale": { "min": 1, "max": 5 },
-  "items": [
-    {
-      "id": "item_1",
-      "text": "Item text",
-      "factor": "subscale_id",
-      "reverse": false,
-      "responseScale": { "min": 1, "max": 5 }
-    }
-  ],
-  "subscales": {
-    "subscale_id": {
-      "label": "Subscale label",
-      "method": "mean",
-      "items": ["item_1"]
-    }
-  }
-}
-```
+포함된 척도 문항은 프로토타입용 데모입니다. 실제 연구, 상담, 임상, 채용, 평가 장면에 사용하려면 검증되거나 라이선스가 확보된 척도, 대상 집단에 대한 신뢰도와 타당도 근거, 개인정보 보호 절차, 전문가 검토가 필요합니다.
 
-See `docs/contracts.md` for the contract boundaries.
+## Tech
 
-## AI Agent Boundary
-
-Pass `result.interpretationInput` to the AI agent. Do not ask the AI agent to calculate, modify, or infer scores.
-
-Recommended report language:
-
-- "This response pattern suggests a tendency toward ..."
-- "Use this result as a starting point for reflection and conversation."
-- "Do not use this as a clinical diagnosis or treatment recommendation."
-
-Avoid:
-
-- "You have depression."
-- "This score means hire/reject."
-- "The AI adjusted the score."
-
-For study-design consultation, pass an explicit study context to `createCopilotConsultation` instead of overloading respondent scores:
-
-```js
-import { createCopilotConsultation } from "./src/index.js";
-
-const consultation = createCopilotConsultation({
-  purpose: "Evaluate a 3-factor Likert questionnaire",
-  construct: "workplace wellbeing",
-  intendedUse: "research report",
-  responseScale: { min: 1, max: 5 },
-  itemCount: 18,
-  sampleSize: 320,
-  expectedFactors: 3,
-  groupComparison: true,
-  groupVariable: "group_id",
-  groups: ["group_a", "group_b"]
-});
-
-console.log(consultation.recommendedAnalyses);
-```
-
-## Reliability Notes
-
-Cronbach alpha is a cohort-level statistic. It is not meaningful for one person's result. Use `cronbachAlphaForScale` only after enough complete respondent records have accumulated.
-
-## Production Notes
-
-The included scales are demo templates, not validated instruments. Before real use:
-
-- replace demo items with validated or licensed scales
-- review consent, privacy, storage, and deletion flows
-- run reliability and validity studies on your target population
-- add bias and adverse-impact review for HR or hiring contexts
-- route crisis or self-harm language to a separate safety workflow
+- Static HTML, CSS, JavaScript
+- No backend
+- No database
+- No third-party runtime dependency
+- GitHub Pages ready
