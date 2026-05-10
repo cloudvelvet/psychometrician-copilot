@@ -105,6 +105,7 @@ function wireConsultation() {
   nodes.consultForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderConsultation();
+    focusResultPanel();
   });
 
   nodes.groupComparisonInput.addEventListener("change", () => {
@@ -116,7 +117,10 @@ function wireConsultation() {
 function wireAssessment() {
   nodes.scaleSelect.addEventListener("change", () => loadSelectedScale());
   nodes.resetButton.addEventListener("click", () => resetResponses());
-  nodes.scoreButton.addEventListener("click", () => renderScoreResult());
+  nodes.scoreButton.addEventListener("click", () => {
+    renderScoreResult();
+    focusResultPanel();
+  });
   nodes.assessmentForm.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
@@ -175,9 +179,9 @@ async function copyReportBrief(button) {
   const text = nodes.resultPanel.querySelector(".report-hero")?.textContent?.trim() ?? "";
   try {
     await navigator.clipboard.writeText(text);
-    button.textContent = "Copied";
+    button.textContent = "복사됨";
   } catch {
-    button.textContent = "Copy failed";
+    button.textContent = "복사 실패";
   } finally {
     window.setTimeout(() => {
       button.textContent = originalLabel;
@@ -189,6 +193,12 @@ function scrollToReportSection(selector) {
   const target = nodes.resultPanel.querySelector(selector)?.closest(".result-section") ??
     nodes.resultPanel.querySelector(selector);
   target?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function focusResultPanel() {
+  if (window.matchMedia("(max-width: 1260px)").matches) {
+    nodes.resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 async function loadScaleList() {
@@ -269,7 +279,12 @@ function renderConsultation() {
         </span>
       </header>
 
-      ${renderReportToolbar(["Copy brief", "Jump to evidence", "Export report", "Edit inputs"])}
+      ${renderReportToolbar([
+        { label: "요약 복사", action: "copy_brief" },
+        { label: "근거 보기", action: "jump_to_evidence" },
+        { label: "PDF 저장", action: "export_report" },
+        { label: "입력 수정", action: "edit_inputs" }
+      ])}
 
       <section class="metric-grid">
         ${renderMetric("입력 완성도", `${completion}%`, renderBar(completion))}
@@ -519,7 +534,12 @@ function renderScoreResult() {
         <span class="status-pill ${validity.className}">${validity.label}</span>
       </header>
 
-      ${renderReportToolbar(["Copy brief", "Review flags", "Export report", "Edit answers"])}
+      ${renderReportToolbar([
+        { label: "요약 복사", action: "copy_brief" },
+        { label: "경고 보기", action: "review_flags" },
+        { label: "PDF 저장", action: "export_report" },
+        { label: "응답 수정", action: "edit_answers" }
+      ])}
 
       <section class="metric-grid">
         ${renderMetric("전체 평균", `${formatNumber(result.scoring.overall.score)} / ${scaleMax}`, renderBar(scorePercent(result.scoring.overall.score, scaleMin, scaleMax)))}
@@ -649,14 +669,10 @@ function renderReportToolbar(actions) {
   return `
     <div class="report-toolbar" aria-label="Report actions">
       ${actions.map((action) => `
-        <button type="button" class="report-tool" data-report-action="${reportActionId(action)}">${escapeHtml(action)}</button>
+        <button type="button" class="report-tool" data-report-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>
       `).join("")}
     </div>
   `;
-}
-
-function reportActionId(action) {
-  return action.toLowerCase().replaceAll(" ", "_");
 }
 
 function renderActionRail(title, actions) {
