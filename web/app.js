@@ -1,6 +1,7 @@
 import { createCopilotConsultation } from "../src/copilot.js";
 import { cronbachAlpha } from "../src/reliability.js";
 import { scoreAssessment } from "../src/score.js";
+import { createStudyPacket } from "../src/study-packet.js";
 
 const SCALE_FILES = [
   "affect-state-demo.json",
@@ -199,6 +200,14 @@ async function handleReportAction(button) {
     await copyReportBrief(button);
     return;
   }
+  if (action === "copy_packet") {
+    await copyStudyPacket(button);
+    return;
+  }
+  if (action === "jump_to_packet") {
+    scrollToReportSection(".study-packet");
+    return;
+  }
   if (action === "jump_to_evidence") {
     scrollToReportSection(".evidence-grid");
     return;
@@ -228,8 +237,16 @@ async function handleReportAction(button) {
 }
 
 async function copyReportBrief(button) {
+  await copyReportSection(button, ".report-hero");
+}
+
+async function copyStudyPacket(button) {
+  await copyReportSection(button, ".study-packet");
+}
+
+async function copyReportSection(button, selector) {
   const originalLabel = button.textContent;
-  const text = nodes.resultPanel.querySelector(".report-hero")?.textContent?.trim() ?? "";
+  const text = nodes.resultPanel.querySelector(selector)?.textContent?.trim() ?? "";
   try {
     await navigator.clipboard.writeText(text);
     button.textContent = "복사됨";
@@ -768,6 +785,8 @@ function renderConsultation() {
 
       ${renderReportToolbar([
         { label: "요약 복사", action: "copy_brief" },
+        { label: "패킷 보기", action: "jump_to_packet" },
+        { label: "패킷 복사", action: "copy_packet" },
         { label: "근거 보기", action: "jump_to_evidence" },
         { label: "PDF 저장", action: "export_report" },
         { label: "입력 수정", action: "edit_inputs" }
@@ -783,11 +802,9 @@ function renderConsultation() {
       ${renderConsultationBrief(consultation, { completion, errors, flags })}
       ${renderConsultationActionRail(consultation)}
       ${renderConsultationChat(consultation)}
-      ${renderMissingInfo(consultation)}
+      ${renderStudyPacket(consultation)}
       ${renderWarnings(consultation.critic.warnings)}
-      ${renderAnalysisRoadmap(consultation.recommendedAnalyses)}
       ${renderEvidenceTopics(consultation.evidence)}
-      ${renderCodeTemplates(consultation.codeTemplates)}
     </article>
   `;
 }
@@ -851,6 +868,189 @@ function renderConsultationChat(consultation) {
         ${renderChatBubble("guardrail", boundary)}
       </div>
     </section>
+  `;
+}
+
+function renderStudyPacket(consultation) {
+  const packet = createStudyPacket(consultation);
+  const mappingLimit = 36;
+  const mappingRows = packet.itemFactorMap.slice(0, mappingLimit);
+  const hiddenMappingCount = packet.itemFactorMap.length - mappingRows.length;
+
+  return `
+    <section class="study-packet result-section" aria-labelledby="studyPacketTitle">
+      <div class="packet-header">
+        <div>
+          <p class="eyebrow">Study Packet Builder</p>
+          <h3 id="studyPacketTitle">연구 패킷</h3>
+          <p>상담 입력값을 실제 연구자가 확인할 작업 단위로 재구성했습니다. 이 패킷은 분석을 실행하지 않고, 실행 전 필요한 설계·자료·보고 항목을 정리합니다.</p>
+        </div>
+        <div class="packet-status">
+          <span>Packet readiness</span>
+          <strong>${packet.completion}%</strong>
+          ${renderBar(packet.completion)}
+          <button type="button" class="report-tool" data-report-action="copy_packet">패킷 복사</button>
+        </div>
+      </div>
+
+      <div class="packet-summary-grid">
+        ${packet.designSummary.map(renderPacketSummaryItem).join("")}
+      </div>
+
+      <div class="packet-layout">
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>01</span>
+            <h4>현재 입력으로 확정된 것</h4>
+          </div>
+          ${packet.knownFacts.length === 0
+            ? `<p class="soft-copy">아직 확정된 연구 입력값이 없습니다.</p>`
+            : renderPacketTable(
+              ["항목", "값"],
+              packet.knownFacts.map((fact) => [fact.label, fact.value])
+            )}
+        </article>
+
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>02</span>
+            <h4>가정</h4>
+          </div>
+          ${renderPacketChecklist(packet.assumptions)}
+        </article>
+
+        <article class="packet-card wide">
+          <div class="packet-card-title">
+            <span>03</span>
+            <h4>변수 manifest</h4>
+          </div>
+          ${renderPacketTable(
+            ["변수", "역할", "형식", "상태", "메모"],
+            packet.variableManifest.map((row) => [row.name, row.role, row.type, row.status, row.note])
+          )}
+        </article>
+
+        <article class="packet-card wide">
+          <div class="packet-card-title">
+            <span>04</span>
+            <h4>문항-요인 매핑표</h4>
+          </div>
+          ${mappingRows.length > 0
+            ? renderPacketTable(
+              ["문항", "요인", "상태", "방향", "메모"],
+              mappingRows.map((row) => [row.item, row.factor, row.status, row.direction, row.note])
+            )
+            : `<p class="soft-copy">문항 수를 입력하면 item1, item2 형식의 임시 매핑표를 만들 수 있습니다.</p>`}
+          ${hiddenMappingCount > 0 ? `<p class="packet-footnote">나머지 ${hiddenMappingCount}개 문항은 복사한 패킷 텍스트와 전체 DTO에서 이어서 확인하세요.</p>` : ""}
+        </article>
+
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>05</span>
+            <h4>분석 순서</h4>
+          </div>
+          <ol class="packet-sequence">
+            ${packet.analysisSequence.map((step) => `
+              <li>
+                <strong>${escapeHtml(step.title)}</strong>
+                <span>${escapeHtml(step.priority)} · ${escapeHtml(step.confidence)}</span>
+                <p>${escapeHtml(step.output)}</p>
+              </li>
+            `).join("")}
+          </ol>
+        </article>
+
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>06</span>
+            <h4>누락 정보</h4>
+          </div>
+          ${renderPacketChecklist(packet.missingInformation, "현재 추가 필수 정보는 없습니다. 그래도 실제 원자료의 결측과 범주 분포는 분석 전에 다시 확인하세요.")}
+        </article>
+
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>07</span>
+            <h4>보고문 체크리스트</h4>
+          </div>
+          ${renderPacketChecklist(packet.reportingChecklist)}
+        </article>
+
+        <article class="packet-card">
+          <div class="packet-card-title">
+            <span>08</span>
+            <h4>다음 입력해야 할 정보</h4>
+          </div>
+          ${renderPacketChecklist(packet.nextInputs)}
+        </article>
+
+        <article class="packet-card wide">
+          <div class="packet-card-title">
+            <span>09</span>
+            <h4>R 코드 템플릿</h4>
+          </div>
+          ${packet.codeTemplates.length === 0
+            ? `<p class="soft-copy">현재 조건에서는 안전하게 생성할 R 템플릿이 없습니다.</p>`
+            : `<div class="packet-template-list">
+              ${packet.codeTemplates.map((template) => `
+                <details class="packet-template">
+                  <summary>
+                    <span>${escapeHtml(template.title)}</span>
+                    <small>${template.packages.map(escapeHtml).join(" · ")}</small>
+                  </summary>
+                  <pre><code>${escapeHtml(template.code)}</code></pre>
+                </details>
+              `).join("")}
+            </div>`}
+        </article>
+
+        <article class="packet-card wide boundary-card">
+          <div class="packet-card-title">
+            <span>10</span>
+            <h4>에이전트 경계</h4>
+          </div>
+          ${renderPacketChecklist(packet.boundaryChecklist)}
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderPacketSummaryItem(item) {
+  return `
+    <article class="packet-summary-item ${escapeHtml(item.state)}">
+      <span>${escapeHtml(item.label)}</span>
+      <strong>${escapeHtml(item.value)}</strong>
+      <p>${escapeHtml(item.detail)}</p>
+    </article>
+  `;
+}
+
+function renderPacketTable(headers, rows) {
+  return `
+    <div class="packet-table-wrap">
+      <table class="packet-table">
+        <thead>
+          <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderPacketChecklist(items, emptyText = "아직 표시할 항목이 없습니다.") {
+  if (items.length === 0) {
+    return `<p class="soft-copy">${escapeHtml(emptyText)}</p>`;
+  }
+  return `
+    <ul class="packet-checklist">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
   `;
 }
 

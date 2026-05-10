@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import {
   createCopilotConsultation,
+  createStudyPacket,
   listKnowledgeTopics,
   retrieveKnowledge,
   validateKnowledgeTopics
@@ -35,6 +36,64 @@ test("copilot recommends ordinal CFA, IRT, invariance, and DIF for a grouped Lik
   assert.ok(consultation.codeTemplates.some((template) => template.id === "mirt_graded_response"));
   assert.ok(consultation.evidence.some((topic) => topic.id === "ordinal_cfa"));
   assert.equal(Object.isFrozen(consultation), true);
+});
+
+test("study packet organizes a fully specified grouped Likert study", () => {
+  const consultation = createCopilotConsultation({
+    purpose: "Evaluate a 3-factor Likert questionnaire",
+    construct: "workplace wellbeing",
+    intendedUse: "research report",
+    responseScale: { min: 1, max: 5 },
+    itemCount: 18,
+    sampleSize: 320,
+    expectedFactors: 3,
+    groupComparison: true,
+    groups: ["women", "men"],
+    groupVariable: "gender"
+  });
+
+  const packet = createStudyPacket(consultation);
+
+  assert.equal(packet.schemaVersion, "study_packet_v1");
+  assert.equal(packet.deterministic, true);
+  assert.equal(packet.itemFactorMap.length, 18);
+  assert.ok(packet.variableManifest.some((row) => row.name === "gender"));
+  assert.ok(packet.analysisSequence.some((step) => step.title.includes("Measurement invariance")));
+  assert.ok(packet.reportingChecklist.some((item) => item.includes("집단 비교")));
+  assert.ok(packet.codeTemplates.some((template) => template.id === "lavaan_ordinal_cfa"));
+  assert.ok(packet.boundaryChecklist.some((item) => item.includes("R 코드 실행 결과가 아닙니다")));
+  assert.equal(Object.isFrozen(packet), true);
+});
+
+test("study packet marks generated item IDs and provisional mappings as templates", () => {
+  const consultation = createCopilotConsultation({
+    purpose: "Evaluate a 2-factor Likert questionnaire",
+    responseScale: { min: 1, max: 5 },
+    itemCount: 6,
+    sampleSize: 180,
+    expectedFactors: 2
+  });
+
+  const packet = createStudyPacket(consultation);
+
+  assert.equal(packet.itemFactorMap[0].item, "item1");
+  assert.equal(packet.itemFactorMap[0].status, "템플릿");
+  assert.match(packet.itemFactorMap[0].note, /placeholder mapping/);
+  assert.ok(packet.variableManifest[0].note.includes("실제 데이터 컬럼명"));
+  assert.ok(packet.nextInputs.some((item) => item.includes("실제 데이터의 문항 컬럼명")));
+});
+
+test("study packet keeps under-specified requests focused on missing inputs", () => {
+  const consultation = createCopilotConsultation({
+    purpose: "new scale development"
+  });
+
+  const packet = createStudyPacket(consultation);
+
+  assert.ok(packet.missingInformation.some((item) => item.includes("Sample size")));
+  assert.ok(packet.missingInformation.some((item) => item.includes("Response scale")));
+  assert.ok(packet.nextInputs.some((item) => item.includes("결측률")));
+  assert.ok(packet.boundaryChecklist.some((item) => item.includes("연구 계획 산출물")));
 });
 
 test("copilot does not generate CFA code for impossible factor counts", () => {

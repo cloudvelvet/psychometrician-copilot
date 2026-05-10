@@ -38,3 +38,5 @@ export {
   normalizeStudyContext,
   recommendAnalyses
 } from "./copilot.js";
+
+export { createStudyPacket } from "./study-packet.js";
