@@ -49,9 +49,12 @@ https://cloudvelvet.github.io/psychometrician-copilot/
 지식 추가 위치:
 
 ```text
+psychometrics_kb/
 knowledge/topics.js
 knowledge/standards-2014.js
 ```
+
+권장 방식은 `psychometrics_kb/`에 주제별 Markdown 문서를 추가하는 것입니다. 이 문서들은 빌드 단계에서 브라우저용 지식 카드로 변환됩니다.
 
 새 지식 카드는 아래 필드를 갖습니다.
 
@@ -70,6 +73,7 @@ knowledge/standards-2014.js
 수정 후 확인:
 
 ```powershell
+npm run kb:build
 npm test
 npm run build
 ```

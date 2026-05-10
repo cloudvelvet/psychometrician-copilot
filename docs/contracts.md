@@ -98,7 +98,12 @@ This DTO should not be merged into `interpretationInput`. The respondent-result 
 
 ## 6. Knowledge Registry
 
-The local knowledge registry lives in `knowledge/topics.js`. It is the first "training" layer for this static MVP.
+The local knowledge registry has two layers:
+
+- `psychometrics_kb/**/*.md` for human-authored, topic-organized source notes
+- `knowledge/topics.js` and generated modules for browser-readable cards
+
+Run `npm run kb:build` after editing Markdown knowledge notes.
 
 Each topic is an auditable card with:
 

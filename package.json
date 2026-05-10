@@ -5,10 +5,11 @@
   "type": "module",
   "description": "Static psychometric consultation and demo scoring app for GitHub Pages.",
   "scripts": {
-    "build": "node bin/build-static.mjs",
-    "test": "node --test && node --check web/app.js && node --check src/copilot.js && node --check src/score.js && node --check knowledge/topics.js && node --check knowledge/standards-2014.js",
-    "web": "node bin/serve-web.mjs",
-    "consult": "node bin/copilot.mjs"
+    "kb:build": "node bin/build-kb.mjs",
+    "build": "npm run kb:build && node bin/build-static.mjs",
+    "test": "npm run kb:build && node --test && node --check web/app.js && node --check src/copilot.js && node --check src/score.js && node --check knowledge/topics.js && node --check knowledge/standards-2014.js && node --check knowledge/generated-kb.js",
+    "web": "npm run kb:build && node bin/serve-web.mjs",
+    "consult": "npm run kb:build && node bin/copilot.mjs"
   },
   "engines": {
     "node": ">=20"

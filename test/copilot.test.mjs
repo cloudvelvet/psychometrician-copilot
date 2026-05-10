@@ -114,3 +114,12 @@ test("2014 Standards cards are retrievable with source metadata", () => {
   assert.match(hits[0].source.citation, /AERA, APA, & NCME/);
   assert.ok(hits[0].checks.some((check) => check.includes("invariance") || check.includes("DIF")));
 });
+
+test("markdown KB topics are compiled into retrievable cards", () => {
+  const topics = listKnowledgeTopics();
+  const hits = retrieveKnowledge("Mantel-Haenszel DIF focal reference group 만텔 헨젤");
+
+  assert.ok(topics.some((topic) => topic.id === "kb_ordinal_cfa"));
+  assert.equal(hits[0].id, "kb_mantel_haenszel_dif");
+  assert.match(hits[0].source.path, /psychometrics_kb\/dif\/mantel_haenszel.md/);
+});

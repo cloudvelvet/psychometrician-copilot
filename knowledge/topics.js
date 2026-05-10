@@ -1,4 +1,5 @@
 import { STANDARDS_2014_TOPICS } from "./standards-2014.js";
+import { MARKDOWN_KB_TOPICS } from "./generated-kb.js";
 
 const CORE_TOPICS = [
   {
@@ -341,5 +342,6 @@ const CORE_TOPICS = [
 
 export const KNOWLEDGE_TOPICS = [
   ...CORE_TOPICS,
-  ...STANDARDS_2014_TOPICS
+  ...STANDARDS_2014_TOPICS,
+  ...MARKDOWN_KB_TOPICS
 ];
